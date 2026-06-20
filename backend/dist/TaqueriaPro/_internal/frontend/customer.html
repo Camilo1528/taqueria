@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Pedido - Taquería Pro</title>
+    <link href="libs/bootstrap.min.css" rel="stylesheet">
+    <script src="libs/sweetalert2.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="container pb-5 mb-5">
+    <header class="text-center py-4">
+        <h2 class="fw-bold text-dark">TAQUERÍA <span class="text-primary">PRO</span></h2>
+        <p class="text-muted small">Menú Interactivo</p>
+    </header>
+    
+    <div id="grid-productos" class="row g-3"></div>
+</div>
+
+<div id="bar-pedido" class="sticky-bottom-bar" style="display: none;">
+    <div class="d-flex justify-content-between align-items-center container">
+        <div class="lh-1">
+            <div class="small text-muted">Tu Pedido</div>
+            <div class="h4 mb-0 fw-bold"><span id="cart-count">0</span> ítems</div>
+        </div>
+        <button id="btn-enviar" class="btn btn-success btn-lg px-5 fw-bold rounded-pill" onclick="confirmarPedido()">
+            ENVIAR PEDIDO
+        </button>
+    </div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const mesaId = urlParams.get('table');
+    let carrito = [];
+
+    if(!mesaId) {
+        Swal.fire({icon: 'error', title: 'Mesa Inválida', text: 'Por favor escanee el código QR desde su mesa.'});
+    } else {
+        cargarProductos();
+    }
+
+    async function cargarProductos() {
+        const res = await fetch('/menu', { headers: {'x-api-key': '123456'} });
+        const prods = await res.json();
+        const div = document.getElementById('grid-productos');
+        
+        prods.forEach(p => {
+            div.innerHTML += `
+                <div class="col-6 col-md-4">
+                    <div class="card card-producto p-3 text-center h-100" onclick="agregarItem(${p.id})">
+                        <div class="fw-bold">${p.name}</div>
+                        <div class="text-primary small fw-bold mt-1">$${p.price_cop}</div>
+                    </div>
+                </div>`;
+        });
+    }
+
+    function agregarItem(id) {
+        carrito.push({ product_id: id, qty: 1 });
+        document.getElementById('bar-pedido').style.display = 'block';
+        document.getElementById('cart-count').innerText = carrito.length;
+    }
+
+    async function confirmarPedido() {
+        if (carrito.length === 0) return;
+        const btn = document.getElementById('btn-enviar');
+        btn.disabled = true;
+        btn.innerText = "ENVIANDO...";
+
+        try {
+            for (const item of carrito) {
+                await fetch('/add_to_order', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'x-api-key': '123456'},
+                    body: JSON.stringify({
+                        order_id: mesaId, 
+                        product_id: item.product_id,
+                        qty: item.qty
+                    })
+                });
+            }
+            Swal.fire({
+                icon: 'success',
+                title: '¡Recibido!',
+                text: 'Los chefs están preparando tu comida.',
+                timer: 3000,
+                showConfirmButton: false
+            });
+            carrito = [];
+            document.getElementById('bar-pedido').style.display = 'none';
+        } catch (e) {
+            Swal.fire({icon: 'error', title: 'Error', text: 'Error enviando el pedido.'});
+        }
+        btn.disabled = false;
+        btn.innerText = "ENVIAR PEDIDO";
+    }
+</script>
+</body>
+</html>

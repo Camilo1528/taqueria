@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Taquería Pro</title>
+    <link href="libs/bootstrap.min.css" rel="stylesheet">
+    <script src="libs/chart.js"></script>
+    <style>
+        body { background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card-stat { border: none; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <h2 class="fw-bold mb-4">Dashboard Analítico <span class="text-primary">PRO</span></h2>
+    
+    <nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1" id="admin-brand">Admin - Cargando...</span>
+    </div>
+</nav>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card card-stat p-4 text-center bg-primary text-white">
+                <h5 class="opacity-75">Ventas del Día</h5>
+                <h2 id="total-ventas" class="fw-bold">$0</h2>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-stat p-4 text-center bg-success text-white">
+                <h5 class="opacity-75">Órdenes Cerradas</h5>
+                <h2 id="total-ordenes" class="fw-bold">0</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- CEREBRO IA -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card card-stat p-4 border-start border-warning border-5 bg-white">
+                <h5 class="fw-bold text-warning mb-2">🧠 Cerebro Taquería Pro (IA Predictiva)</h5>
+                <div id="ai-insights" class="text-dark fs-5 fw-medium">
+                    Analizando datos...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card card-stat p-4">
+                <h5 class="fw-bold mb-4">Productos Más Vendidos</h5>
+                <canvas id="chartProductos"></canvas>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card card-stat p-4">
+                <h5 class="fw-bold mb-4">Ingresos por Método de Pago</h5>
+                <canvas id="chartPagos"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_KEY = "123456";
+
+    async function cargarDashboard() {
+        const res = await fetch('/dashboard_data', { headers: {'x-api-key': API_KEY} });
+        const data = await res.json();
+        
+        document.getElementById('total-ventas').innerText = '$' + data.total.toLocaleString('es-CO');
+        document.getElementById('total-ordenes').innerText = data.orders;
+
+        // IA Insights
+        document.getElementById('ai-insights').innerHTML = 
+        `<div class="alert alert-warning border-warning"><strong>💡 Cerebro POS:</strong> ${data.insights.join('<br>')}</div>`;
+
+        // Cargar Marca Blanca
+        fetch('/branding')
+            .then(res => res.json())
+            .then(bdata => {
+                document.getElementById('admin-brand').innerText = (bdata.business_name || "Mi Restaurante") + " - Panel de Control";
+                document.title = "Admin - " + (bdata.business_name || "Restaurante");
+            });
+
+        // Chart Productos
+        const labelsProd = data.items.slice(0, 5).map(i => i.product_name);
+        const dataProd = data.items.slice(0, 5).map(i => i.qty);
+        
+        new Chart(document.getElementById('chartProductos'), {
+            type: 'bar',
+            data: {
+                labels: labelsProd,
+                datasets: [{
+                    label: 'Cantidad Vendida',
+                    data: dataProd,
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 5
+                }]
+            }
+        });
+
+        // Chart Pagos
+        const labelsPagos = Object.keys(data.by_payment);
+        const dataPagos = Object.values(data.by_payment);
+
+        new Chart(document.getElementById('chartPagos'), {
+            type: 'doughnut',
+            data: {
+                labels: labelsPagos,
+                datasets: [{
+                    data: dataPagos,
+                    backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b']
+                }]
+            }
+        });
+    }
+
+    cargarDashboard();
+</script>
+</body>
+</html>
