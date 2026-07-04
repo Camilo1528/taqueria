@@ -6,3 +6,4 @@ bcrypt
 websockets
 python-docx
 python-dotenv
+schedule
