@@ -285,7 +285,10 @@
         <!-- Detalle de Orden Actual y Pago -->
         <div class="col-md-5">
             <div class="card shadow-sm p-4 h-100 bg-white" id="payment-panel" style="display:none;">
-                <h4 class="fw-bold mb-3" id="current-table-name">Mesa Seleccionada</h4>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-bold m-0" id="current-table-name">Mesa Seleccionada</h4>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="window.open('/ticket.html?order_id=' + currentSelectedOrder.id, '_blank', 'width=400,height=600')">??? Imprimir Ticket</button>
+                </div>
                 <div style="max-height: 300px; overflow-y: auto;" class="mb-3">
                     <ul class="list-group list-group-flush" id="order-items-list">
                         <!-- Items -->
@@ -1309,5 +1312,6 @@
     </div>
 </div>
 
+<script src="/core.js"></script>
 </body>
 </html>

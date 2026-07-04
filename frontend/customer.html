@@ -27,7 +27,15 @@
         .cart-modal-footer { padding: 15px; border-top: 1px solid #ddd; }
         
         .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+
+        /* Category Tabs */
+        .cat-tabs { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; background: white; position: sticky; top: 55px; z-index: 900; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .cat-tabs::-webkit-scrollbar { display: none; }
+        .cat-tab { white-space: nowrap; padding: 7px 18px; border-radius: 20px; border: 2px solid #dc3545; background: transparent; color: #dc3545; font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+        .cat-tab.active { background: #dc3545; color: white; }
+        .cat-section-title { font-size: 1rem; font-weight: 700; color: #333; padding: 12px 0 6px; border-bottom: 2px solid #f0f0f0; margin-bottom: 10px; }
     </style>
+  <link rel="manifest" href="/manifest.json">
 </head>
 <body>
 
@@ -38,6 +46,8 @@
         </div>
         <small id="header-subtitle">Realiza tu pedido directo a cocina</small>
     </div>
+
+    <div id="cat-tabs-bar" class="cat-tabs" style="display:none"></div>
 
     <div class="container mt-3" id="menu-container">
         <!-- Products will be loaded here -->
@@ -119,10 +129,12 @@
         const isDomicilio = urlParams.get('domicilio');
         
         let products = [];
+        let categories = [];
+        let activeCategory = 'all';
 
         async function init() {
             if (isDomicilio) {
-                tableId = -1; // Placeholder ID for delivery
+                tableId = -1;
                 document.getElementById('table-title').innerText = "🛵 Pedido a Domicilio";
                 document.getElementById('delivery-info-form').style.display = 'block';
             } else {
@@ -152,8 +164,13 @@
             } catch(e) {}
 
             try {
-                const res = await fetch('/api/customer/menu');
-                products = await res.json();
+                const [menuRes, catRes] = await Promise.all([
+                    fetch('/api/customer/menu'),
+                    fetch('/api/categories')
+                ]);
+                products = await menuRes.json();
+                categories = catRes.ok ? await catRes.json() : [];
+                renderCategoryTabs();
                 renderMenu();
             } catch (e) {
                 document.getElementById('menu-container').innerHTML = "<div class='alert alert-danger m-3'>Error al cargar el menú.</div>";
@@ -162,33 +179,83 @@
 
         let cart = [];
 
+        function renderCategoryTabs() {
+            const bar = document.getElementById('cat-tabs-bar');
+            if(!categories || categories.length === 0) return;
+            bar.style.display = 'flex';
+
+            let html = `<button class="cat-tab active" onclick="filterCategory('all', this)">🍽️ Todos</button>`;
+            categories.forEach(c => {
+                html += `<button class="cat-tab" onclick="filterCategory(${c.id}, this)">${c.name}</button>`;
+            });
+            bar.innerHTML = html;
+        }
+
+        function filterCategory(catId, btn) {
+            activeCategory = catId;
+            document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            renderMenu();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         function renderMenu() {
             const container = document.getElementById('menu-container');
             container.innerHTML = '';
             
-            if(products.length === 0) {
-                container.innerHTML = "<div class='text-center mt-5 text-muted'>No hay productos disponibles por ahora.</div>";
+            let filtered = activeCategory === 'all'
+                ? products
+                : products.filter(p => p.category_id === activeCategory);
+
+            if(filtered.length === 0) {
+                container.innerHTML = "<div class='text-center mt-5 text-muted'>No hay productos en esta categoría.</div>";
                 return;
             }
 
-            products.forEach(p => {
-                const imgHtml = p.image_url 
-                    ? `<img src="${p.image_url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin-right: 15px;" alt="${p.name}">`
-                    : `<div style="width: 80px; height: 80px; border-radius: 8px; margin-right: 15px; background: #eee; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 24px;"><i class="fas fa-utensils"></i></div>`;
-                    
-                container.innerHTML += `
-                    <div class="product-card">
-                        ${imgHtml}
-                        <div class="product-info">
-                            <div class="product-name">${p.name}</div>
-                            <div class="product-price">$${p.price_cop.toLocaleString('es-CO')}</div>
-                        </div>
-                        <div class="qty-controls">
-                            <button class="qty-btn text-white bg-success" style="width:100%; border-radius:8px; padding:5px 15px;" onclick="openModifierModal(${p.id})">Agregar</button>
-                        </div>
+            if(activeCategory === 'all' && categories.length > 0) {
+                // Group by category
+                const catMap = {};
+                categories.forEach(c => { catMap[c.id] = c.name; });
+                const grouped = {};
+                const uncategorized = [];
+                filtered.forEach(p => {
+                    if(p.category_id && catMap[p.category_id]) {
+                        if(!grouped[p.category_id]) grouped[p.category_id] = { name: catMap[p.category_id], items: [] };
+                        grouped[p.category_id].items.push(p);
+                    } else {
+                        uncategorized.push(p);
+                    }
+                });
+
+                Object.values(grouped).forEach(group => {
+                    container.innerHTML += `<div class="cat-section-title">🏷️ ${group.name}</div>`;
+                    group.items.forEach(p => container.innerHTML += productCardHtml(p));
+                });
+                if(uncategorized.length > 0) {
+                    container.innerHTML += `<div class="cat-section-title">🏷️ Otros</div>`;
+                    uncategorized.forEach(p => container.innerHTML += productCardHtml(p));
+                }
+            } else {
+                filtered.forEach(p => container.innerHTML += productCardHtml(p));
+            }
+        }
+
+        function productCardHtml(p) {
+            const imgHtml = p.image_url 
+                ? `<img src="${p.image_url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin-right: 15px;" alt="${p.name}">`
+                : `<div style="width: 80px; height: 80px; border-radius: 8px; margin-right: 15px; background: #eee; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 24px;">🍴</div>`;
+            return `
+                <div class="product-card">
+                    ${imgHtml}
+                    <div class="product-info">
+                        <div class="product-name">${p.name}</div>
+                        <div class="product-price">$${p.price_cop.toLocaleString('es-CO')}</div>
                     </div>
-                `;
-            });
+                    <div class="qty-controls">
+                        <button class="qty-btn text-white bg-success" style="width:100%; border-radius:8px; padding:5px 15px;" onclick="openModifierModal(${p.id})">Agregar</button>
+                    </div>
+                </div>
+            `;
         }
 
         let currentAddId = null;
@@ -432,5 +499,6 @@
   </div>
 </div>
 
+<script src="/core.js"></script>
 </body>
 </html>

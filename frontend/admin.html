@@ -111,6 +111,7 @@
     .stock-fill { height: 100%; border-radius: 3px; transition: width .5s; }
     .alert-banner { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
   </style>
+  <link rel="manifest" href="/manifest.json">
 </head>
 <body>
 
@@ -175,6 +176,27 @@
 
     <!-- REPORTES -->
     <div class="section" id="sec-reportes">
+      <!-- Custom Reports UI -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-title"><i class="bi bi-calendar-range-fill" style="color:var(--accent)"></i> Reporte Personalizado</div>
+        <div class="input-row" style="margin-bottom:12px">
+            <div class="form-group"><label class="form-label">Desde</label><input type="date" class="form-control" id="rep-start"></div>
+            <div class="form-group"><label class="form-label">Hasta</label><input type="date" class="form-control" id="rep-end"></div>
+        </div>
+        <button class="btn btn-primary" onclick="generateCustomReport()"><i class="bi bi-search"></i> Consultar Ventas</button>
+        <button class="btn btn-success" onclick="exportCustomReportCSV()" id="btn-export-csv" style="display:none"><i class="bi bi-file-earmark-spreadsheet-fill"></i> Exportar CSV</button>
+        
+        <div id="custom-report-results" style="margin-top:20px; display:none;">
+            <div class="kpi-grid">
+                <div class="kpi-card blue"><div class="kpi-label">Total Ventas</div><div class="kpi-value" id="cr-total">$0</div></div>
+                <div class="kpi-card green"><div class="kpi-label">Ordenes</div><div class="kpi-value" id="cr-orders">0</div></div>
+            </div>
+            <h5 style="font-size:14px; font-weight:700; margin:16px 0 8px;">Top Productos Vendidos</h5>
+            <div style="overflow-x:auto;">
+                <table><thead><tr><th>Producto</th><th>Cantidad Vendida</th></tr></thead><tbody id="cr-tbody"></tbody></table>
+            </div>
+        </div>
+      </div>
       <div class="card" style="margin-bottom:20px"><div class="section-title"><i class="bi bi-graph-up-arrow"></i> Tendencia de Ventas (7 Dias)</div><canvas id="salesChart" style="max-height:300px"></canvas></div>
       <div class="card"><div class="section-title"><i class="bi bi-trophy-fill"></i> Top Productos de la Semana</div><canvas id="itemsChart" style="max-height:260px"></canvas></div>
     </div>
@@ -482,8 +504,6 @@
 </div>
 
 <script>
-const TOKEN = () => localStorage.getItem('token');
-const AUTH = () => ({ 'Authorization': 'Bearer ' + TOKEN(), 'Content-Type': 'application/json' });
 const APIKEY = '123456';
 
 window.onload = () => {
@@ -508,15 +528,12 @@ window.onload = () => {
     renderAdImages();
   }).catch(()=>{});
   loadDashboard();
-  updateClock();
-  setInterval(updateClock, 1000);
+  updateClockGlobal('topbar-time');
+  setInterval(() => updateClockGlobal('topbar-time'), 1000);
   setInterval(loadDashboard, 60000);
 };
 
-function updateClock() {
-  const n = new Date();
-  document.getElementById('topbar-time').textContent =
-    n.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) +
+) +
     '   ' + n.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
 }
 
@@ -531,7 +548,6 @@ function showSection(id, btn) {
   if(L[id]) L[id]();
 }
 
-function logout() { localStorage.clear(); window.location.href = '/login.html'; }
 
 async function downloadBackup() {
   try {
@@ -556,19 +572,60 @@ async function downloadBackup() {
   }
 }
 
-function toast(msg, type='success') {
-  const c = document.getElementById('toasts');
-  const d = document.createElement('div');
-  d.className = 'toast ' + type;
-  const ico = {success:'check-circle-fill',error:'x-circle-fill',warning:'exclamation-triangle-fill'}[type]||'info-circle-fill';
-  d.innerHTML = '<i class="bi bi-'+ico+'"></i> ' + msg;
-  c.appendChild(d);
-  setTimeout(()=>d.remove(), 3500);
-}
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+let customReportData = null;
+async function generateCustomReport() {
+    const start = document.getElementById('rep-start').value;
+    const end = document.getElementById('rep-end').value;
+    if(!start || !end) return toast("Selecciona ambas fechas", "error");
+    
+    try {
+        const res = await fetch(`/api/admin/reports/custom?start_date=${start}&end_date=${end}`, {headers: AUTH()});
+        if(!res.ok) throw new Error("Error fetching report");
+        const data = await res.json();
+        customReportData = data;
+        
+        document.getElementById('custom-report-results').style.display = 'block';
+        document.getElementById('btn-export-csv').style.display = 'inline-flex';
+        
+        document.getElementById('cr-total').innerText = '$' + (data.total||0).toLocaleString('es-CO');
+        document.getElementById('cr-orders').innerText = data.orders||0;
+        
+        const tbody = document.getElementById('cr-tbody');
+        tbody.innerHTML = '';
+        if(data.items && data.items.length > 0) {
+            data.items.forEach(i => {
+                tbody.innerHTML += `<tr><td>${i.product_name}</td><td>${i.qty}</td></tr>`;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">No hay datos en este rango.</td></tr>';
+        }
+    } catch(e) {
+        toast("Error al generar reporte", "error");
+    }
+}
+
+function exportCustomReportCSV() {
+    if(!customReportData) return;
+    let csv = "Producto,Cantidad Vendida\\n";
+    customReportData.items.forEach(i => {
+        csv += `${i.product_name},${i.qty}\\n`;
+    });
+    csv += `\\nTotal Ventas,${customReportData.total}\\n`;
+    csv += `Total Ordenes,${customReportData.orders}\\n`;
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reporte_ventas_${document.getElementById('rep-start').value}_al_${document.getElementById('rep-end').value}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
 
 // DASHBOARD
 let chartProd=null, chartPagos=null;
@@ -947,7 +1004,9 @@ async function eliminarEmp(id, username) {
 
 function printEmployeeQR(pin, name) {
   if(!pin) { toast('El empleado no tiene PIN', 'error'); return; }
-  let h='<html><head><title>QR Asistencia - '+name+'</title><style>body{font-family:sans-serif;text-align:center;padding:40px}.qr-card{border:2px dashed #000;padding:30px;border-radius:10px;display:inline-block}.qr-card img{width:200px;height:200px}.qr-card h2{margin:15px 0 5px;font-size:28px}.qr-card p{margin:5px 0 0;color:#555;font-size:18px}</style></head><body><div class="qr-card"><img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(pin)+'" onload="window.qrl()"><h2>'+name+'</h2><p>Carnet de Asistencia</p></div><script>window.qrl=function(){setTimeout(()=>window.print(),500);};<\\/script></body></html>';
+  let h='<html><head><title>QR Asistencia - '+name+'</title><style>body{font-family:sans-serif;text-align:center;padding:40px}.qr-card{border:2px dashed #000;padding:30px;border-radius:10px;display:inline-block}.qr-card img{width:200px;height:200px}.qr-card h2{margin:15px 0 5px;font-size:28px}.qr-card p{margin:5px 0 0;color:#555;font-size:18px}</style>  <link rel="manifest" href="/manifest.json">
+</head><body><div class="qr-card"><img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(pin)+'" onload="window.qrl()"><h2>'+name+'</h2><p>Carnet de Asistencia</p></div><script>window.qrl=function(){setTimeout(()=>window.print(),500);};<\\/script><script src="/core.js"></script>
+</body></html>';
   const w=window.open('','_blank');
   w.document.write(h);
   w.document.close();
@@ -1068,7 +1127,10 @@ async function uploadAdImage() {
   } catch(e) { toast('Error de conexión', 'error'); }
 }
 async function syncToMaster(){const btn=document.getElementById('btn-sync');btn.innerHTML='<i class="bi bi-arrow-repeat"></i> Sincronizando...';btn.disabled=true;try{const r=await fetch('/api/sync/master',{method:'POST',headers:AUTH()});if(r.ok){toast('Sincronizacion exitosa');document.getElementById('last-sync-time').textContent=new Date().toLocaleString('es-CO');}else toast('Error de sincronizacion','error');}catch(e){toast('Error de conexion','error');}btn.innerHTML='<i class="bi bi-arrow-repeat"></i> Sincronizar Ahora';btn.disabled=false;}
-function generateQRs(){const n=parseInt(document.getElementById('conf-tables').value)||6;const url=window.location.href.split('/admin.html')[0];let h='<html><head><title>QRs Taqueria Pro</title><style>body{font-family:sans-serif;text-align:center}.qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:20px}.qr-card{border:2px dashed #000;padding:20px;border-radius:10px;page-break-inside:avoid}.qr-card img{width:150px;height:150px}.qr-card h2{margin:10px 0 0;font-size:24px}.qr-card p{margin:5px 0 0;color:#555}</style></head><body><h1>Escanea para Ordenar</h1><div class="qr-grid">';for(let i=1;i<=n;i++){const mu=url+'/customer.html?mesa='+i;h+='<div class="qr-card"><img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data='+encodeURIComponent(mu)+'" onload="window.qrl()"><h2>Mesa '+i+'</h2><p>Ordena desde tu celular!</p></div>';}h+='</div><script>let l=0;window.qrl=function(){l++;if(l==='+n+')setTimeout(()=>window.print(),500);}<\/script></body></html>';const w=window.open('','_blank');w.document.write(h);w.document.close();}
+function generateQRs(){const n=parseInt(document.getElementById('conf-tables').value)||6;const url=window.location.href.split('/admin.html')[0];let h='<html><head><title>QRs Taqueria Pro</title><style>body{font-family:sans-serif;text-align:center}.qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:20px}.qr-card{border:2px dashed #000;padding:20px;border-radius:10px;page-break-inside:avoid}.qr-card img{width:150px;height:150px}.qr-card h2{margin:10px 0 0;font-size:24px}.qr-card p{margin:5px 0 0;color:#555}</style>  <link rel="manifest" href="/manifest.json">
+</head><body><h1>Escanea para Ordenar</h1><div class="qr-grid">';for(let i=1;i<=n;i++){const mu=url+'/customer.html?mesa='+i;h+='<div class="qr-card"><img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data='+encodeURIComponent(mu)+'" onload="window.qrl()"><h2>Mesa '+i+'</h2><p>Ordena desde tu celular!</p></div>';}h+='</div><script>let l=0;window.qrl=function(){l++;if(l==='+n+')setTimeout(()=>window.print(),500);}<\/script><script src="/core.js"></script>
+</body></html>';const w=window.open('','_blank');w.document.write(h);w.document.close();}
 </script>
+<script src="/core.js"></script>
 </body>
 </html>

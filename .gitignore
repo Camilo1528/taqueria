@@ -17,3 +17,22 @@ venv.bak/
 .DS_Store
 backend/backups/
 backend/uploads/
+backend/dist/
+backend/build/
+# Solo scripts sueltos en la raiz
+/cf_dns.py
+/cf_ssl.py
+/check*.py
+/fix_*.py
+/deploy_*.py
+/restart_*.py
+/rebuild_*.py
+/recreate_*.py
+/update_*.py
+/upload_*.py
+/test*.py
+/refactor.py
+/check.py
+/find_taqueria.py
+/generate_docs.py
+/temp_recipes.py

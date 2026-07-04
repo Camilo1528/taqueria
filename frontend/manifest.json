@@ -1,15 +1,14 @@
-
 {
-  "name": "Taqueria Pro",
-  "short_name": "Taqueria",
-  "description": "Sistema POS y Restaurante",
-  "start_url": "/admin.html",
+  "name": "Taquería Pro",
+  "short_name": "Taquería Pro",
+  "description": "Sistema de gestión y menú digital",
+  "start_url": "/login.html",
   "display": "standalone",
-  "background_color": "#f3f4f6",
-  "theme_color": "#1f2937",
+  "background_color": "#0f0f1a",
+  "theme_color": "#10b981",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3665/3665922.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/3041/3041130.png",
       "sizes": "512x512",
       "type": "image/png"
     }

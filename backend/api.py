@@ -159,6 +159,27 @@ def get_menu(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/categories")
+async def get_categories():
+    rows = db.all("SELECT id, name FROM categories")
+    return [dict(r) for r in rows]
+
+@app.get("/api/admin/reports/custom")
+async def custom_report(start_date: str, end_date: str, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    if len(start_date) != 10 or len(end_date) != 10:
+        raise HTTPException(status_code=400, detail="Formato de fecha inv\u00e1lido")
+    rows = db.all("SELECT payment_method, total_cop FROM orders WHERE status='closed' AND substr(closed_at,1,10) BETWEEN ? AND ?", (start_date, end_date))
+    items = db.all("SELECT product_name, SUM(qty) qty FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE o.status='closed' AND substr(o.closed_at,1,10) BETWEEN ? AND ? GROUP BY product_name ORDER BY qty DESC", (start_date, end_date))
+    total = sum(r['total_cop'] for r in rows)
+    by_payment = {}
+    for r in rows:
+        m = r['payment_method'] or 'sin_definir'
+        by_payment[m] = by_payment.get(m, 0) + r['total_cop']
+    return {'total': total, 'orders': len(rows), 'by_payment': by_payment, 'items': [dict(i) for i in items]}
+
+
 @app.post("/api/products")
 def create_product(data: ProductCreate, current_user: dict = Depends(get_current_user)):
     try:
