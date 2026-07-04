@@ -7,3 +7,4 @@ websockets
 python-docx
 python-dotenv
 schedule
+requests
