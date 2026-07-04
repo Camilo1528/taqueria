@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pedidos a Domicilio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding-bottom: 80px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .header { background: #dc3545; color: white; padding: 15px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .product-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .product-info { flex: 1; }
+        .product-name { font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; }
+        .product-price { color: #198754; font-weight: bold; font-size: 1.1rem; }
+        .qty-controls { display: flex; align-items: center; gap: 10px; }
+        .qty-btn { width: 35px; height: 35px; border-radius: 50%; border: none; background: #e9ecef; color: #333; font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        .qty-val { font-weight: bold; font-size: 1.2rem; min-width: 20px; text-align: center; }
+        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #212529; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1050; border-top-left-radius: 15px; border-top-right-radius: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.2); transition: transform 0.3s; transform: translateY(100%); }
+        .cart-bar.active { transform: translateY(0); }
+        .cart-btn { background: #198754; color: white; border: none; padding: 10px 20px; border-radius: 25px; font-weight: bold; }
+        
+        /* Modal for Cart */
+        .cart-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 2000; display: none; flex-direction: column; }
+        .cart-modal.active { display: flex; }
+        .cart-modal-header { padding: 15px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
+        .cart-modal-body { flex: 1; overflow-y: auto; padding: 15px; }
+        .cart-modal-footer { padding: 15px; border-top: 1px solid #ddd; background: #f8f9fa;}
+        
+        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        #bank-info { display: none; background: #e9ecef; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 0.9rem;}
+    </style>
+</head>
+<body onload="init()">
+
+    <div class="header text-center">
+        <h4 class="m-0 fw-bold">🛵 Pedidos a Domicilio</h4>
+        <small>Elige tus platillos y te los llevamos a casa</small>
+    </div>
+
+    <div class="container mt-3" id="menu-container">
+        <!-- Products will be loaded here -->
+        <div class="text-center mt-5">
+            <div class="spinner-border text-danger" role="status"></div>
+            <p class="mt-2 text-muted">Cargando menú...</p>
+        </div>
+    </div>
+
+    <div class="cart-bar" id="cart-bar">
+        <div>
+            <div class="fw-bold" id="cart-count">0 items</div>
+            <div class="text-success fw-bold" id="cart-total">$0</div>
+        </div>
+        <button class="cart-btn" onclick="openCart()">Finalizar Compra</button>
+    </div>
+
+    <!-- Cart Modal -->
+    <div class="cart-modal" id="cart-modal">
+        <div class="cart-modal-header">
+            <h5 class="m-0 fw-bold">Finalizar Pedido</h5>
+            <button class="btn-close" onclick="closeCart()"></button>
+        </div>
+        <div class="cart-modal-body">
+            <h6 class="fw-bold text-secondary mb-3">TUS PRODUCTOS</h6>
+            <div id="cart-items" class="mb-4"></div>
+            
+            <h6 class="fw-bold text-secondary mb-3">TUS DATOS</h6>
+            <form id="delivery-form">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nombre Completo *</label>
+                    <input type="text" class="form-control" id="c_name" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Teléfono (WhatsApp) *</label>
+                    <input type="tel" class="form-control" id="c_phone" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Dirección de Envío *</label>
+                    <textarea class="form-control" id="c_address" rows="2" required placeholder="Ej: Calle 45 # 12-34, Apto 101, Barrio Centro"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Método de Pago *</label>
+                    <select class="form-select" id="c_payment" required onchange="toggleBankInfo()">
+                        <option value="">Selecciona un método...</option>
+                        <option value="efectivo">Efectivo (Pago contra entrega)</option>
+                        <option value="transferencia">Transferencia (Nequi/Cuenta)</option>
+                    </select>
+                    
+                    <div id="bank-info">
+                        <strong>💳 Datos para Transferencia:</strong><br>
+                        Nequi / Daviplata: 300 000 0000<br>
+                        Al finalizar el pedido, envíanos el comprobante por WhatsApp.
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="cart-modal-footer">
+            <div class="d-flex justify-content-between mb-3">
+                <span class="fs-5 fw-bold">Total a Pagar:</span>
+                <span class="fs-4 fw-bold text-success" id="modal-total">$0</span>
+            </div>
+            <button class="btn btn-danger w-100 py-3 fs-5 fw-bold rounded-3" onclick="submitOrder()" id="submit-btn">Confirmar Pedido</button>
+            <a id="wa-btn" class="btn btn-success w-100 py-3 fs-5 fw-bold rounded-3 mt-2" style="display:none;" target="_blank">📲 Enviar Comprobante</a>
+        </div>
+    </div>
+
+    <script>
+        let products = [];
+        let cart = {}; // product_id -> qty
+        let WHATSAPP_NUM = "573000000000"; 
+
+        async function init() {
+            try {
+                const bRes = await fetch('/branding');
+                const bData = await bRes.json();
+                if (bData.whatsapp_number) WHATSAPP_NUM = bData.whatsapp_number;
+                
+                const res = await fetch('/api/customer/menu');
+                products = await res.json();
+                renderMenu();
+            } catch (e) {
+                document.getElementById('menu-container').innerHTML = "<div class='alert alert-danger m-3'>Error al cargar el menú o la configuración.</div>";
+            }
+        }
+
+        function renderMenu() {
+            const container = document.getElementById('menu-container');
+            container.innerHTML = '';
+            
+            products.forEach(p => {
+                const qty = cart[p.id] || 0;
+                container.innerHTML += `
+                    <div class="product-card">
+                        <div class="product-info">
+                            <div class="product-name">${p.name}</div>
+                            <div class="product-price">$${p.price_cop.toLocaleString()}</div>
+                        </div>
+                        <div class="qty-controls">
+                            <button class="qty-btn" onclick="updateCart(${p.id}, -1)">-</button>
+                            <div class="qty-val" id="qty-${p.id}">${qty}</div>
+                            <button class="qty-btn" onclick="updateCart(${p.id}, 1)">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function updateCart(prodId, delta) {
+            if (!cart[prodId]) cart[prodId] = 0;
+            cart[prodId] += delta;
+            if (cart[prodId] < 0) cart[prodId] = 0;
+            
+            document.getElementById(`qty-${prodId}`).innerText = cart[prodId];
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            let total = 0;
+            let count = 0;
+            
+            for (let [id, qty] of Object.entries(cart)) {
+                if (qty > 0) {
+                    const p = products.find(x => x.id == id);
+                    total += p.price_cop * qty;
+                    count += qty;
+                }
+            }
+            
+            const bar = document.getElementById('cart-bar');
+            if (count > 0) {
+                bar.classList.add('active');
+            } else {
+                bar.classList.remove('active');
+            }
+            
+            document.getElementById('cart-count').innerText = `${count} producto(s)`;
+            document.getElementById('cart-total').innerText = `$${total.toLocaleString()}`;
+            document.getElementById('modal-total').innerText = `$${total.toLocaleString()}`;
+        }
+
+        function openCart() {
+            const container = document.getElementById('cart-items');
+            container.innerHTML = '';
+            
+            for (let [id, qty] of Object.entries(cart)) {
+                if (qty > 0) {
+                    const p = products.find(x => x.id == id);
+                    container.innerHTML += `
+                        <div class="cart-item">
+                            <div>
+                                <span class="fw-bold">${qty}x</span> ${p.name}
+                            </div>
+                            <div class="text-success fw-bold">$${(p.price_cop * qty).toLocaleString()}</div>
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('cart-modal').classList.add('active');
+        }
+
+        function closeCart() {
+            document.getElementById('cart-modal').classList.remove('active');
+        }
+        
+        function toggleBankInfo() {
+            const payment = document.getElementById('c_payment').value;
+            if (payment === 'transferencia') {
+                document.getElementById('bank-info').style.display = 'block';
+            } else {
+                document.getElementById('bank-info').style.display = 'none';
+            }
+        }
+
+        async function submitOrder() {
+            const form = document.getElementById('delivery-form');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            const items = [];
+            for (let [id, qty] of Object.entries(cart)) {
+                if (qty > 0) items.push({product_id: parseInt(id), qty: qty});
+            }
+            
+            if (items.length === 0) {
+                alert("Tu carrito está vacío");
+                return;
+            }
+            
+            const name = document.getElementById('c_name').value;
+            const phone = document.getElementById('c_phone').value;
+            const address = document.getElementById('c_address').value;
+            const payment = document.getElementById('c_payment').value;
+            
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerText = "Procesando...";
+
+            try {
+                const res = await fetch('/api/delivery/order', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        phone: phone,
+                        address: address,
+                        payment_method: payment,
+                        items: items
+                    })
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    // Success!
+                    btn.style.display = 'none';
+                    document.getElementById('cart-items').innerHTML = `<div class="alert alert-success text-center"><h5>¡Pedido Confirmado!</h5><p>Tu orden ha sido enviada a la cocina.</p></div>`;
+                    
+                    if (payment === 'transferencia') {
+                        const total = document.getElementById('modal-total').innerText;
+                        const msg = encodeURIComponent(`Hola, soy ${name}. Acabo de hacer un pedido a domicilio por ${total}. Adjunto el comprobante de transferencia.`);
+                        const waLink = `https://wa.me/${WHATSAPP_NUM}?text=${msg}`;
+                        const waBtn = document.getElementById('wa-btn');
+                        waBtn.href = waLink;
+                        waBtn.style.display = 'block';
+                    } else {
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 3000);
+                    }
+                } else {
+                    alert(data.detail || "Error al enviar el pedido");
+                    btn.disabled = false;
+                    btn.innerText = "Confirmar Pedido";
+                }
+            } catch (e) {
+                alert("Error de conexión");
+                btn.disabled = false;
+                btn.innerText = "Confirmar Pedido";
+            }
+        }
+    </script>
+</body>
+</html>

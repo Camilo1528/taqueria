@@ -83,25 +83,33 @@
 
     ws.onclose = () => setTimeout(() => { ws = new WebSocket(wsUrl); }, 3000);
 
-    // Cargar Marca Blanca
+    // Cargar Marca Blanca y Publicidad
+    let adImages = [
+        "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1080&q=80",
+        "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=1080&q=80",
+        "https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?auto=format&fit=crop&w=1080&q=80"
+    ];
+
     fetch('/branding')
         .then(res => res.json())
         .then(data => {
             document.getElementById('brand-name').innerText = data.business_name || "Mi Restaurante";
             document.title = (data.business_name || "Mi Restaurante") + " - Pantalla de Cliente";
             document.body.style.setProperty('--brand-color', data.theme_color || '#10b981');
+            
+            if (data.ad_images && data.ad_images.length > 0) {
+                adImages = data.ad_images;
+                document.getElementById('ad-img').src = adImages[0];
+            }
         });
 
     // Rotación de Imágenes para antojarlos
-    const images = [
-        "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1080&q=80",
-        "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=1080&q=80",
-        "https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?auto=format&fit=crop&w=1080&q=80"
-    ];
     let idx = 0;
     setInterval(() => {
-        idx = (idx + 1) % images.length;
-        document.getElementById('ad-img').src = images[idx];
+        if(adImages.length > 0) {
+            idx = (idx + 1) % adImages.length;
+            document.getElementById('ad-img').src = adImages[idx];
+        }
     }, 10000);
 </script>
 

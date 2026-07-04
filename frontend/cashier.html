@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caja - Taquería Pro</title>
+    <link href="libs/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .pos-header { background-color: #1f2937; color: white; padding: 1rem; }
+        .order-card { background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 1rem; cursor: pointer; transition: transform 0.2s; }
+        .order-card:hover { transform: scale(1.02); }
+        .pay-btn { width: 100%; font-size: 1.2rem; font-weight: bold; padding: 15px; margin-bottom: 10px; border-radius: 10px; transition: transform 0.1s; }
+        .pay-btn:active { transform: scale(0.95); }
+        
+        /* Modal PIN */
+        #login-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 24, 39, 0.95); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .pin-pad { background: #1f2937; padding: 2rem; border-radius: 15px; text-align: center; color: white; width: 350px;}
+        .pin-btn { width: 70px; height: 70px; font-size: 24px; margin: 5px; border-radius: 50%; border: none; background: #374151; color: white; }
+        .pin-btn.clear { background: #ef4444; }
+        .pin-display { font-size: 30px; font-family: monospace; letter-spacing: 10px; background: #111827; padding: 10px; border-radius: 10px; margin-bottom: 20px; }
+    </style>
+
+    <link rel="manifest" href="manifest.json">
+    <script src="js/offline-queue.js">
+    function openDianModal() {
+        if(!currentSelectedOrder) return;
+        document.getElementById('dian-modal').style.display = 'block';
+    }
+
+    async function generateDianInvoice() {
+        if(!currentSelectedOrder) return;
+        const doc_type = document.getElementById('dian-doc-type').value;
+        const doc_num = document.getElementById('dian-doc-num').value;
+        const name = document.getElementById('dian-name').value;
+        const email = document.getElementById('dian-email').value;
+        
+        if(!doc_num || !name) {
+            alert('Por favor ingresa número de documento y nombre.');
+            return;
+        }
+        
+        const payload = {
+            order_id: currentSelectedOrder.id,
+            document_type: doc_type,
+            document_number: doc_num,
+            name: name,
+            email: email
+        };
+        
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/dian/invoice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert(`Factura FEV generada (${result.invoice_number}) - CUFE: ${result.cufe}\n¡Ahora puedes proceder a cobrar la orden!`);
+                document.getElementById('dian-modal').style.display = 'none';
+                loadData(); // To refresh order notes
+            } else {
+                alert('Error al generar factura DIAN: ' + (result.detail || 'Error desconocido'));
+            }
+        } catch(e) {
+            alert('Error de conexión con la DIAN.');
+        }
+    }
+
+
+    async function loadReservations() {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/reservations', { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await res.json();
+            
+            const tbody = document.getElementById('reservations-list');
+            tbody.innerHTML = '';
+            data.forEach(r => {
+                const statusBadge = r.status === 'pending' ? '<span class="badge bg-warning text-dark">Pendiente</span>' : 
+                                  (r.status === 'arrived' ? '<span class="badge bg-success">Llegó</span>' : '<span class="badge bg-secondary">Cancelada</span>');
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${r.res_date}</td>
+                        <td>${r.res_time}</td>
+                        <td class="fw-bold">${r.name}</td>
+                        <td>${r.phone || '-'}</td>
+                        <td><span class="badge bg-primary rounded-pill">${r.guests}</span></td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            ${r.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="updateReservation(${r.id}, 'arrived')">Llegó</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('reservations-modal').style.display = 'block';
+        } catch(e) {
+            alert("Error al cargar reservas.");
+        }
+    }
+
+    async function updateReservation(id, status) {
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`/api/reservations/${id}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({status})
+            });
+            loadReservations();
+        } catch(e) {}
+    }
+
+</script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+            .then(reg => {
+                console.log('SW registered');
+                // Registrar Background Sync
+                if ('sync' in reg) {
+                    reg.sync.register('sync-pending-operations').catch(e => console.log('BG Sync not available'));
+                }
+            })
+            .catch(err => console.log('SW failed', err));
+
+            // Escuchar mensajes del SW (sync completado)
+            navigator.serviceWorker.addEventListener('message', event => {
+                if (event.data && event.data.type === 'SYNC_COMPLETE') {
+                    loadData(); // Recargar datos tras sincronización
+                }
+            });
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark-mode')) {
+                document.documentElement.classList.remove('dark-mode');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark-mode');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+    
+    function openDianModal() {
+        if(!currentSelectedOrder) return;
+        document.getElementById('dian-modal').style.display = 'block';
+    }
+
+    async function generateDianInvoice() {
+        if(!currentSelectedOrder) return;
+        const doc_type = document.getElementById('dian-doc-type').value;
+        const doc_num = document.getElementById('dian-doc-num').value;
+        const name = document.getElementById('dian-name').value;
+        const email = document.getElementById('dian-email').value;
+        
+        if(!doc_num || !name) {
+            alert('Por favor ingresa número de documento y nombre.');
+            return;
+        }
+        
+        const payload = {
+            order_id: currentSelectedOrder.id,
+            document_type: doc_type,
+            document_number: doc_num,
+            name: name,
+            email: email
+        };
+        
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/dian/invoice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert(`Factura FEV generada (${result.invoice_number}) - CUFE: ${result.cufe}\n¡Ahora puedes proceder a cobrar la orden!`);
+                document.getElementById('dian-modal').style.display = 'none';
+                loadData(); // To refresh order notes
+            } else {
+                alert('Error al generar factura DIAN: ' + (result.detail || 'Error desconocido'));
+            }
+        } catch(e) {
+            alert('Error de conexión con la DIAN.');
+        }
+    }
+
+
+    async function loadReservations() {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/reservations', { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await res.json();
+            
+            const tbody = document.getElementById('reservations-list');
+            tbody.innerHTML = '';
+            data.forEach(r => {
+                const statusBadge = r.status === 'pending' ? '<span class="badge bg-warning text-dark">Pendiente</span>' : 
+                                  (r.status === 'arrived' ? '<span class="badge bg-success">Llegó</span>' : '<span class="badge bg-secondary">Cancelada</span>');
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${r.res_date}</td>
+                        <td>${r.res_time}</td>
+                        <td class="fw-bold">${r.name}</td>
+                        <td>${r.phone || '-'}</td>
+                        <td><span class="badge bg-primary rounded-pill">${r.guests}</span></td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            ${r.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="updateReservation(${r.id}, 'arrived')">Llegó</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('reservations-modal').style.display = 'block';
+        } catch(e) {
+            alert("Error al cargar reservas.");
+        }
+    }
+
+    async function updateReservation(id, status) {
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`/api/reservations/${id}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({status})
+            });
+            loadReservations();
+        } catch(e) {}
+    }
+
+</script>
+
+</head>
+<body>
+
+<div class="pos-header d-flex justify-content-between align-items-center">
+    <h2 class="m-0 fw-bold"><span class="text-success">Taquería Pro</span> - Caja</h2>
+    <div class="d-flex align-items-center">
+        <button class="btn btn-outline-light me-3 btn-sm" onclick="connectPrinter()">🖨️ Conectar Impresora</button>
+        <img id="brand-logo" src="" style="height: 30px; margin-right: 10px; display: none; object-fit: contain; border-radius: 4px;">
+        <span class="fs-5" id="brand-name">Cargando...</span>
+    </div>
+</div>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Lista de Órdenes -->
+        <div class="col-md-7">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="m-0">Mesas con Pedidos</h4>
+                <div>
+                    <button class="btn btn-outline-success fw-bold me-2" onclick="document.getElementById('delivery-modal').style.display='block'">🛵 Nuevo Domicilio</button>
+                    <button class="btn btn-outline-danger fw-bold me-2" onclick="document.getElementById('expense-modal').style.display='block'">💸 Salida / Gasto</button>
+                    <button class="btn btn-outline-warning fw-bold me-2" onclick="showVenderBonoModal()">🎁 Vender Bono</button>
+                    <button class="btn btn-outline-primary fw-bold me-2" id="toggle-view-btn" onclick="toggleView()">🗺️ Ver Mapa</button>
+                    <button class="btn btn-dark fw-bold" onclick="showShiftCloseModal()">💵 Arqueo / Cerrar</button>
+                </div>
+            </div>
+            <div class="row" id="orders-container">
+                <!-- Injected via JS -->
+            </div>
+            
+            <!-- Map View Container -->
+            <div id="map-container" style="display:none; background: #e5e7eb; border-radius: 10px; padding: 20px; position: relative; min-height: 400px; border: 2px dashed #9ca3af;">
+                <div class="d-flex justify-content-center flex-wrap gap-4" id="tables-map-grid">
+                    <!-- Map injected via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Detalle de Orden Actual y Pago -->
+        <div class="col-md-5">
+            <div class="card shadow-sm p-4 h-100 bg-white" id="payment-panel" style="display:none;">
+                <h4 class="fw-bold mb-3" id="current-table-name">Mesa Seleccionada</h4>
+                <div style="max-height: 300px; overflow-y: auto;" class="mb-3">
+                    <ul class="list-group list-group-flush" id="order-items-list">
+                        <!-- Items -->
+                    </ul>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-4 border-top pt-3">
+                    <span class="fs-4">TOTAL:</span>
+                    <span class="fs-2 fw-bold text-success" id="order-total">$0</span>
+                </div>
+                
+                <h5 class="mb-3">Método de Pago</h5>
+                
+                
+                <div class="mb-3">
+                    <label class="form-label">Propina Sugerida (10%)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="tip-amount" value="0">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Teléfono Cliente (Fidelización)</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="customer-phone" placeholder="Opcional" onblur="checkPoints()">
+                        <button class="btn btn-outline-secondary" onclick="checkPoints()">Checar</button>
+                    </div>
+                    <small id="loyalty-info" class="text-success fw-bold mt-1 d-block"></small>
+                </div>
+
+                <button class="btn btn-success pay-btn" onclick="processPayment('efectivo')">💵 Efectivo</button>
+                <button class="btn btn-primary pay-btn" onclick="processPayment('tarjeta')">💳 Tarjeta</button>
+                <button class="btn btn-warning pay-btn" onclick="processPayment('puntos')">⭐ Puntos Fidelidad</button>
+                <button class="btn btn-dark pay-btn w-100 mt-2" onclick="openDianModal()">🧾 Factura Electrónica (DIAN)</button>
+                <button class="btn btn-info pay-btn text-white w-100 mt-2" onclick="payWithBono()">🎁 Canjear Bono Regalo</button>
+            </div>
+            <div id="no-selection" class="text-center p-5 text-muted">
+                <h4>Selecciona una orden para cobrar</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Vender Bono -->
+<div class="modal" id="vender-bono-modal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title">🎁 Vender Bono de Regalo</h5>
+        <button type="button" class="btn-close" onclick="document.getElementById('vender-bono-modal').style.display='none'"></button>
+      </div>
+      <div class="modal-body">
+        <label>Valor del Bono (COP):</label>
+        <div class="input-group mb-3">
+            <span class="input-group-text">$</span>
+            <input type="number" class="form-control form-control-lg" id="bono-value" value="50000">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('vender-bono-modal').style.display='none'">Cancelar</button>
+        <button type="button" class="btn btn-warning" onclick="confirmVenderBono()">Generar Bono</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Arqueo -->
+<div class="modal" id="shift-close-modal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title">Cierre de Turno / Arqueo</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('shift-close-modal').style.display='none'"></button>
+      </div>
+      <div class="modal-body">
+        <label>Efectivo Físico en Caja:</label>
+        <div class="input-group mb-3">
+            <span class="input-group-text">$</span>
+            <input type="number" class="form-control form-control-lg" id="actual-cash" value="0">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('shift-close-modal').style.display='none'">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="closeShift()">Realizar Arqueo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal" id="shift-open-modal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold">Apertura de Turno</h5>
+      </div>
+      <div class="modal-body text-center p-4">
+        <h4 class="mb-4">Ingresa el Fondo de Caja Físico</h4>
+        <div class="input-group mb-3">
+            <span class="input-group-text fs-3">$</span>
+            <input type="number" class="form-control form-control-lg fs-3 text-center" id="opening-cash" value="100000">
+        </div>
+        <p class="text-muted">Este monto se usará para calcular el arqueo al final del turno.</p>
+        <button class="btn btn-success btn-lg w-100 fw-bold mt-3" onclick="openShift()">Abrir Caja y Comenzar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Modal Gasto -->
+<div class="modal" id="expense-modal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">Registrar Salida / Gasto</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('expense-modal').style.display='none'"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+            <label class="form-label">Descripción del Gasto</label>
+            <input type="text" class="form-control" id="expense-desc" placeholder="Ej: Hielo, Proveedor, Limpieza">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Monto Retirado ($)</label>
+            <input type="number" class="form-control" id="expense-amount" value="0">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('expense-modal').style.display='none'">Cancelar</button>
+        <button type="button" class="btn btn-danger fw-bold" onclick="registerExpense()">Registrar Gasto</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Modal Modificadores de Platillo -->
+<div class="modal" id="modifier-modal" tabindex="-1" style="z-index:2000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-secondary text-white">
+        <h5 class="modal-title" id="modifier-modal-title">📝 Modificadores</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('modifier-modal').style.display='none'"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">Selecciona modificadores rápidos o escribe uno personalizado:</p>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <button class="btn btn-outline-secondary btn-sm" onclick="addModifier('Sin cebolla')">Sin cebolla</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="addModifier('Sin cilantro')">Sin cilantro</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="addModifier('Sin chile')">Sin chile</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="addModifier('Extra queso')">Extra queso</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="addModifier('Para llevar')">Para llevar</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="addModifier('Poco picante')">Poco picante</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="addModifier('Muy picante')">Muy picante</button>
+        </div>
+        <div class="input-group">
+            <input type="text" class="form-control" id="modifier-custom-input" placeholder="O escribe una nota personalizada...">
+            <button class="btn btn-secondary" onclick="addModifier(document.getElementById('modifier-custom-input').value)">+ Añadir</button>
+        </div>
+        <div class="mt-3 p-2 bg-light rounded" id="modifier-preview" style="min-height:40px; font-style:italic; color:#555;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('modifier-modal').style.display='none'">Cancelar</button>
+        <button type="button" class="btn btn-success fw-bold" onclick="saveModifier()">✅ Guardar Notas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal PIN Administrador -->
+<div class="modal" id="admin-pin-modal" tabindex="-1" style="z-index:2100; background:rgba(0,0,0,0.8);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">🔐 Autorización de Administrador</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="cancelAdminPin()"></button>
+      </div>
+      <div class="modal-body text-center p-4">
+        <p class="text-muted mb-3">Esta acción requiere PIN de Administrador.</p>
+        <div class="input-group mb-3">
+            <span class="input-group-text fs-4">🔑</span>
+            <input type="password" class="form-control form-control-lg text-center fs-3" id="admin-pin-input" maxlength="6" placeholder="PIN Admin">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cancelAdminPin()">Cancelar</button>
+        <button type="button" class="btn btn-danger fw-bold" onclick="verifyAdminPinAndProceed()">Autorizar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    let currentPin = "";
+    let openOrders = [];
+    let currentSelectedOrder = null;
+    let shiftData = null;
+    let currentModifierItemIdx = null;
+    let pendingAdminAction = null;
+
+    // ─── MODIFICADORES ────────────────────────────────────────
+    function openModifierModal(idx) {
+        currentModifierItemIdx = idx;
+        const item = currentSelectedOrder.items[idx];
+        document.getElementById('modifier-modal-title').innerText = `📝 ${item.product_name}`;
+        document.getElementById('modifier-preview').innerText = item.notes || 'Sin notas aún...';
+        document.getElementById('modifier-custom-input').value = '';
+        document.getElementById('modifier-modal').style.display = 'block';
+    }
+
+    function addModifier(text) {
+        if (!text || !text.trim()) return;
+        const preview = document.getElementById('modifier-preview');
+        const current = preview.innerText === 'Sin notas aún...' ? '' : preview.innerText;
+        preview.innerText = current ? current + ', ' + text.trim() : text.trim();
+        document.getElementById('modifier-custom-input').value = '';
+    }
+
+    async function saveModifier() {
+        const notes = document.getElementById('modifier-preview').innerText;
+        const finalNotes = document.getElementById('modifier-preview').innerText;
+        if (finalNotes === 'Sin notas aún...') {
+            document.getElementById('modifier-modal').style.display = 'none';
+            return;
+        }
+        const token = localStorage.getItem('token');
+        const item = currentSelectedOrder.items[currentModifierItemIdx];
+        
+        // Call the backend to save the notes, queued if offline
+        const isOffline = !navigator.onLine;
+        const res = await offlineQueue.fetchWithOffline(`/api/pos/orders/${currentSelectedOrder.id}/items/${item.id}/notes`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
+            body: JSON.stringify({notes: finalNotes})
+        });
+        
+        if (!isOffline && !res.ok) {
+            alert("Error al guardar notas en el servidor");
+        } else if (isOffline) {
+            offlineQueue._showSyncNotification(0, 0); // Trigger visual cue or just let the banner handle it
+            await updatePendingBadge();
+        }
+        
+        // Update locally
+        currentSelectedOrder.items[currentModifierItemIdx].notes = finalNotes;
+        document.getElementById('modifier-modal').style.display = 'none';
+        selectOrder(currentSelectedOrder.id);
+    }
+
+    // ─── ADMIN PIN VERIFICACIÓN ───────────────────────────────
+    function requireAdminPin(action) {
+        pendingAdminAction = action;
+        document.getElementById('admin-pin-input').value = '';
+        document.getElementById('admin-pin-modal').style.display = 'block';
+        setTimeout(() => document.getElementById('admin-pin-input').focus(), 200);
+    }
+
+    function cancelAdminPin() {
+        pendingAdminAction = null;
+        document.getElementById('admin-pin-modal').style.display = 'none';
+    }
+
+    async function verifyAdminPinAndProceed() {
+        const pin = document.getElementById('admin-pin-input').value;
+        const res = await fetch('/api/auth/verify_admin_pin', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({pin: pin})
+        });
+        const data = await res.json();
+        if (data.valid) {
+            document.getElementById('admin-pin-modal').style.display = 'none';
+            if (pendingAdminAction) pendingAdminAction();
+            pendingAdminAction = null;
+        } else {
+            document.getElementById('admin-pin-input').value = '';
+            document.getElementById('admin-pin-input').placeholder = '❌ PIN Incorrecto, intenta de nuevo';
+            document.getElementById('admin-pin-input').classList.add('is-invalid');
+            setTimeout(() => {
+                document.getElementById('admin-pin-input').classList.remove('is-invalid');
+                document.getElementById('admin-pin-input').placeholder = 'PIN Admin';
+            }, 1500);
+        }
+    }
+
+
+
+    async function registerExpense() {
+        const desc = document.getElementById('expense-desc').value;
+        const amount = parseFloat(document.getElementById('expense-amount').value);
+        if (!desc || amount <= 0) return alert('Campos inválidos');
+        
+        const token = localStorage.getItem('token');
+        const isOffline = !navigator.onLine;
+        const res = await offlineQueue.fetchWithOffline('/api/expenses', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
+            body: JSON.stringify({description: desc, amount: amount})
+        });
+        
+        // Handle queued_offline or direct ok
+        if (isOffline || res.ok || (await res.json()).status === 'queued_offline') {
+            if (isOffline) {
+                alert('Sin conexión. Gasto guardado localmente, se sincronizará luego.');
+                await updatePendingBadge();
+            } else {
+                alert('Gasto registrado con éxito');
+            }
+            document.getElementById('expense-desc').value = '';
+            document.getElementById('expense-amount').value = '0';
+            document.getElementById('expense-modal').style.display = 'none';
+        } else {
+            alert('Error al registrar gasto');
+        }
+    }
+
+    let numTables = 6;
+    async function loadData() {
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = 'login.html';
+
+        // Mostrar badge de conexión inicial
+        offlineQueue._updateStatusUI(navigator.onLine);
+        await updatePendingBadge();
+
+        try {
+            // Verificar estado de caja (con cache offline)
+            const sRes = await offlineQueue.fetchWithOffline('/api/shift/status', {}, 'shift_status');
+            shiftData = await sRes.json();
+            if(shiftData.status === 'closed') {
+                document.getElementById('shift-open-modal').style.display = 'block';
+                return;
+            }
+
+            // Cargar Marca (con cache offline)
+            const bRes = await offlineQueue.fetchWithOffline('/branding', {}, 'branding');
+            const bData = await bRes.json();
+            document.getElementById('brand-name').innerText = bData.business_name || "Mi Local";
+            if(bData.logo_url) {
+                const logoImg = document.getElementById('brand-logo');
+                logoImg.src = bData.logo_url;
+                logoImg.style.display = 'block';
+            }
+            numTables = parseInt(bData.num_tables) || 6;
+
+            // Cargar Órdenes (con cache offline)
+            const authHeaders = { 'Authorization': 'Bearer ' + token };
+            const res = await offlineQueue.fetchWithOffline('/api/pos/orders', { headers: authHeaders }, 'open_orders');
+            openOrders = await res.json();
+            renderOrders();
+        } catch(e) {
+            // Completamente offline sin cache
+            openOrders = [];
+            renderOrders();
+            console.warn('Modo offline sin datos cacheados:', e.message);
+        }
+    }
+
+    async function updatePendingBadge() {
+        const count = await offlineQueue.count();
+        let badge = document.getElementById('pending-sync-badge');
+        if (count > 0) {
+            if (!badge) {
+                badge = document.createElement('button');
+                badge.id = 'pending-sync-badge';
+                badge.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:9999;background:#f59e0b;color:white;border:none;border-radius:20px;padding:8px 16px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+                badge.onclick = () => offlineQueue.syncAll().then(updatePendingBadge);
+                document.body.appendChild(badge);
+            }
+            badge.innerHTML = `⏳ ${count} pago(s) pendientes de sync - Toca para sincronizar`;
+        } else if (badge) {
+            badge.remove();
+        }
+    }
+
+    async function openShift() {
+        const baseCash = parseFloat(document.getElementById('opening-cash').value) || 0;
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/shift/open', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base_cash: baseCash })
+        });
+        if(res.ok) {
+            document.getElementById('shift-open-modal').style.display = 'none';
+            loadData();
+        } else {
+            alert('Error abriendo turno');
+        }
+    }
+
+    let isMapView = false;
+    
+    function toggleView() {
+        isMapView = !isMapView;
+        const btn = document.getElementById('toggle-view-btn');
+        const listContainer = document.getElementById('orders-container');
+        const mapContainer = document.getElementById('map-container');
+        if (isMapView) {
+            btn.innerText = '📋 Ver Lista';
+            listContainer.style.display = 'none';
+            mapContainer.style.display = 'block';
+        } else {
+            btn.innerText = '🗺️ Ver Mapa';
+            listContainer.style.display = 'flex';
+            mapContainer.style.display = 'none';
+        }
+    }
+
+    function renderOrders() {
+        const container = document.getElementById('orders-container');
+        const mapContainer = document.getElementById('tables-map-grid');
+        container.innerHTML = '';
+        mapContainer.innerHTML = '';
+        
+        if(openOrders.length === 0) {
+            container.innerHTML = '<div class="col-12"><div class="alert alert-info">No hay mesas con pedidos pendientes.</div></div>';
+            mapContainer.innerHTML = '<div class="alert alert-info w-100 text-center">Todo libre</div>';
+            // return; // Don't return, we want to render the free tables!
+        }
+
+        // Render List
+        openOrders.forEach(o => {
+            const html = `
+            <div class="col-md-6">
+                <div class="order-card p-3 border-start border-4 border-primary" onclick="selectOrder(${o.id})">
+                    <div class="d-flex justify-content-between">
+                        <h5 class="fw-bold m-0">${o.table_name || 'Mesa '+o.table_number}</h5>
+                        <span class="badge bg-secondary">${o.items.length} items</span>
+                    </div>
+                    <h4 class="mt-3 text-end text-success fw-bold">$${o.total_cop.toLocaleString('es-CO')}</h4>
+                </div>
+            </div>`;
+            container.innerHTML += html;
+        });
+
+        // Render Map (Dynamic Grid)
+        openOrders.forEach(o => {
+            const mapHtml = `
+            <div class="card text-center text-white bg-danger shadow cursor-pointer" style="width: 120px; height: 120px; cursor: pointer; transition: 0.2s;" onclick="selectOrder(${o.id})" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                    <h4 class="fw-bold m-0">${o.table_name || o.table_number}</h4>
+                    <small>$${o.total_cop.toLocaleString('es-CO')}</small>
+                </div>
+            </div>`;
+            mapContainer.innerHTML += mapHtml;
+        });
+        
+        // Let's add some mock free tables to make the map look better
+        for(let i=1; i<=numTables; i++) {
+            if(!openOrders.find(o => parseInt(o.table_number) === i)) {
+                const mapHtml = `
+                <div class="card text-center text-dark bg-white shadow-sm border-success cursor-pointer" style="width: 120px; height: 120px; border: 2px solid; opacity: 0.8;">
+                    <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                        <h4 class="fw-bold m-0">${i}</h4>
+                        <small class="text-success">Libre</small>
+                    </div>
+                </div>`;
+                if(mapContainer.innerHTML === '<div class="alert alert-info w-100 text-center">Todo libre</div>') {
+                    mapContainer.innerHTML = mapHtml;
+                } else {
+                    mapContainer.innerHTML += mapHtml;
+                }
+            }
+        }
+    }
+
+    function selectOrder(orderId) {
+        currentSelectedOrder = openOrders.find(o => o.id === orderId);
+        document.getElementById('no-selection').style.display = 'none';
+        document.getElementById('payment-panel').style.display = 'block';
+        
+        document.getElementById('current-table-name').innerText = currentSelectedOrder.table_name || 'Mesa ' + currentSelectedOrder.table_number;
+        document.getElementById('order-total').innerText = '$' + currentSelectedOrder.total_cop.toLocaleString('es-CO');
+        
+        // Auto-calcular propina sugerida (10%)
+        const tipSugerida = currentSelectedOrder.total_cop * 0.10;
+        document.getElementById('tip-amount').value = tipSugerida;
+        
+        const list = document.getElementById('order-items-list');
+        list.innerHTML = '';
+        currentSelectedOrder.items.forEach((item, idx) => {
+            const notesHtml = item.notes ? `<div class="text-danger small fw-bold mt-1">📝 ${item.notes}</div>` : '';
+            list.innerHTML += `<li class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>${item.qty}x ${item.product_name}</span>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span>$${item.total_cop.toLocaleString('es-CO')}</span>
+                        <button class="btn btn-sm btn-outline-secondary py-0" onclick="openModifierModal(${idx})" title="Modificadores">📝</button>
+                    </div>
+                </div>
+                ${notesHtml}
+            </li>`;
+        });
+    }
+
+    let currentCustomerPoints = 0;
+
+    async function checkPoints() {
+        const phone = document.getElementById('customer-phone').value;
+        currentCustomerPoints = 0;
+        if(!phone) {
+            document.getElementById('loyalty-info').innerHTML = '';
+            return;
+        }
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/customers/' + phone, { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await res.json();
+            if(data.points > 0) {
+                currentCustomerPoints = data.points;
+                document.getElementById('loyalty-info').innerHTML = `
+                    <div class="alert alert-info py-2 my-2">
+                        <strong>¡Cliente Fidelizado!</strong> Tiene ${data.points} puntos ($ ${(data.points).toLocaleString('es-CO')} COP aprox)<br>
+                        <div class="form-check form-switch mt-1">
+                            <input class="form-check-input" type="checkbox" id="use-points-checkbox">
+                            <label class="form-check-label" for="use-points-checkbox">Aplicar como Descuento</label>
+                        </div>
+                    </div>
+                `;
+            } else {
+                document.getElementById('loyalty-info').innerText = '';
+            }
+        } catch(e) {}
+    }
+
+    async function processPayment(method) {
+        if(!currentSelectedOrder) return;
+        
+        const token = localStorage.getItem('token');
+        const phone = document.getElementById('customer-phone').value;
+        const tip_amount = parseFloat(document.getElementById('tip-amount').value) || 0;
+        const usePoints = document.getElementById('use-points-checkbox') ? document.getElementById('use-points-checkbox').checked : false;
+        
+        const payload = {
+            order_id: currentSelectedOrder.id,
+            method: method,
+            phone: phone || null,
+            tip_amount: tip_amount,
+            points_used: usePoints ? currentCustomerPoints : 0
+        };
+        const currentOrderCopy = { ...currentSelectedOrder };
+
+        try {
+            const isOffline = !navigator.onLine;
+            const res = await offlineQueue.fetchWithOffline('/api/pos/pay', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            // Si el pago fue encolado offline
+            if (data.status === 'queued_offline') {
+                await updatePendingBadge();
+                // Mostrar aviso amarillo de pago guardado localmente
+                const offlineAlert = document.createElement('div');
+                offlineAlert.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:9999;background:#f59e0b;color:white;padding:12px 24px;border-radius:10px;font-weight:bold;font-size:16px;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+                offlineAlert.innerHTML = '⚠️ Sin conexión. Pago guardado localmente - se sincronizará al recuperar internet';
+                document.body.appendChild(offlineAlert);
+                setTimeout(() => offlineAlert.remove(), 5000);
+
+                // Limpiar UI y avanzar igual (el pago está seguro en IndexedDB)
+                document.getElementById('tip-amount').value = '0';
+                document.getElementById('loyalty-info').innerText = '';
+                document.getElementById('payment-panel').style.display = 'none';
+                document.getElementById('no-selection').style.display = 'block';
+                document.getElementById('customer-phone').value = '';
+                currentSelectedOrder = null;
+                // No recargar órdenes pues estamos offline
+                return;
+            }
+
+            if(res.ok) {
+                document.getElementById('tip-amount').value = '0';
+                document.getElementById('loyalty-info').innerText = '';
+                
+                // Imprimir con Web Serial
+                printWebSerial(currentOrderCopy, method, tip_amount);
+
+                document.getElementById('payment-panel').style.display = 'none';
+                document.getElementById('no-selection').style.display = 'block';
+                document.getElementById('customer-phone').value = '';
+                currentSelectedOrder = null;
+                loadData();
+            } else {
+                alert("Error al procesar pago: " + data.detail);
+            }
+        } catch(e) {
+            alert("Error de conexión");
+        }
+    }
+
+    // Auto-refresh orders
+    setInterval(() => {
+        loadData();
+    }, 10000);
+    
+    // Initial load
+    loadData();
+    function showShiftCloseModal() {
+        document.getElementById('shift-close-modal').style.display = 'block';
+    }
+
+    async function closeShift() {
+        const actualCash = parseFloat(document.getElementById('actual-cash').value) || 0;
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/shift/close', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ actual_cash: actualCash })
+        });
+        const data = await res.json();
+        if(res.ok) {
+            alert('Arqueo realizado. Efectivo Esperado: $' + data.expected_cash + ' | Diferencia: $' + data.difference);
+            document.getElementById('shift-close-modal').style.display = 'none';
+            printZReport({ ...data, actual_cash: actualCash });
+        } else {
+            alert('Error en arqueo: ' + data.detail);
+        }
+    }
+    
+    // ==========================================
+    // IMPRESIÓN TÉRMICA WEB SERIAL (SILENT PRINT)
+    // ==========================================
+    let thermalPrinterPort;
+
+    async function connectPrinter() {
+        if (!('serial' in navigator)) {
+            alert('La API de Web Serial no está soportada en tu navegador. Usa Chrome o Edge.');
+            return;
+        }
+        try {
+            thermalPrinterPort = await navigator.serial.requestPort();
+            await thermalPrinterPort.open({ baudRate: 9600 });
+            alert("Impresora conectada exitosamente!");
+        } catch(e) {
+            console.error(e);
+            alert("No se pudo conectar a la impresora.");
+        }
+    }
+
+    async function printWebSerial(order, method, tip_amount) {
+        if (!printerPort) {
+            console.warn("Impresora no conectada.");
+            return;
+        }
+
+        try {
+            const writer = printerPort.writable.getWriter();
+            const ESC = "\x1B";
+            const GS = "\x1D";
+            
+            // Formatters ESC/POS (Simulados para Web Serial básico)
+            const INIT = ESC + "@";
+            const ALIGN_CENTER = ESC + "a" + "\x01";
+            const ALIGN_LEFT = ESC + "a" + "\x00";
+            const BOLD_ON = ESC + "E" + "\x01";
+            const BOLD_OFF = ESC + "E" + "\x00";
+            const DOUBLE_HEIGHT = GS + "!" + "\x01";
+            const NORMAL_SIZE = GS + "!" + "\x00";
+            
+            const brand = document.getElementById('brand-name').innerText;
+            const divider = "--------------------------------\n";
+            const thickDivider = "================================\n";
+            
+            let data = INIT + ALIGN_CENTER + BOLD_ON + DOUBLE_HEIGHT + brand + "\n" + NORMAL_SIZE + BOLD_OFF;
+            data += "NIT: 900.123.456-7\n";
+            data += "Régimen Simple de Tributación\n";
+            data += thickDivider + ALIGN_LEFT;
+            
+            data += `Orden #: ${order.id}\n`;
+            data += `Mesa: ${order.table_name || order.table_number}\n`;
+            data += `Fecha: ${new Date().toLocaleString()}\n`;
+            data += divider;
+            
+            // Items
+            data += BOLD_ON + "CANT DESCRIPCION           TOTAL\n" + BOLD_OFF;
+            order.items.forEach(item => {
+                let name = item.product_name.substring(0, 16).padEnd(16, " ");
+                let qtyStr = item.qty.toString().padStart(2, " ");
+                let totalStr = "$" + item.total_cop.toLocaleString('es-CO');
+                data += `${qtyStr} x ${name} ${totalStr.padStart(9, " ")}\n`;
+            });
+            
+            data += thickDivider;
+            
+            const subtotal = order.total_cop - (tip_amount || 0);
+            data += `SUBTOTAL:         $${subtotal.toLocaleString('es-CO').padStart(14, " ")}\n`;
+            if(tip_amount > 0) {
+                data += `PROPINA:          $${tip_amount.toLocaleString('es-CO').padStart(14, " ")}\n`;
+            }
+            data += BOLD_ON + DOUBLE_HEIGHT + `TOTAL:            $${order.total_cop.toLocaleString('es-CO').padStart(14, " ")}\n` + NORMAL_SIZE + BOLD_OFF;
+            
+            data += divider;
+            data += `Pago con: ${method.toUpperCase()}\n`;
+            
+            // Metadata Fiscal / DIAN si aplica
+            if(order.notes && order.notes.includes('DIAN CUFE')) {
+                data += thickDivider + ALIGN_CENTER;
+                data += "DOCUMENTO EQUIVALENTE ELECTRONICO\n";
+                // Extraer FEV y CUFE de las notas si es posible o simplemente imprimir la nota
+                const lines = order.notes.split('\n');
+                lines.forEach(l => {
+                    if(l.includes('DIAN') || l.includes('FEV')) {
+                        data += l + "\n";
+                    }
+                });
+                data += "\n(QR de DIAN Simulado)\n";
+                data += "??? █▓▒░ ???\n"; // Arte ASCII fake
+            }
+            
+            data += ALIGN_CENTER + divider;
+            data += "¡GRACIAS POR TU COMPRA!\n";
+            data += "Visítanos pronto\n\n\n\n\n\n\n"; // Avanzar papel
+            
+            const encoder = new TextEncoder();
+            await writer.write(encoder.encode(data));
+            writer.releaseLock();
+            
+        } catch (e) {
+            console.error("Error imprimiendo:", e);
+        }
+    }
+
+    async function printZReport(data) {
+        if (!thermalPrinterPort) {
+            console.log("No hay impresora conectada para Reporte Z.");
+            return;
+        }
+        try {
+            const writer = thermalPrinterPort.writable.getWriter();
+            const encoder = new TextEncoder();
+            
+            const ESC_INIT = new Uint8Array([0x1B, 0x40]);
+            const ALIGN_CENTER = new Uint8Array([0x1B, 0x61, 0x01]);
+            const ALIGN_LEFT = new Uint8Array([0x1B, 0x61, 0x00]);
+            const CUT = new Uint8Array([0x1D, 0x56, 0x41, 0x10]);
+
+            await writer.write(ESC_INIT);
+            await writer.write(ALIGN_CENTER);
+            
+            let text = "================================\n";
+            text += "         CORTE DE CAJA         \n";
+            text += "================================\n\n";
+            text += `${new Date().toLocaleString('es-CO')}\n`;
+            text += "--------------------------------\n";
+            await writer.write(encoder.encode(text));
+            
+            await writer.write(ALIGN_LEFT);
+            let info = "";
+            info += `Base:              $${(data.base_cash || 0).toLocaleString('es-CO')}\n`;
+            info += `Ventas Efectivo:   $${(data.total_cash_sales || 0).toLocaleString('es-CO')}\n`;
+            info += `Propinas Pagadas: -$${(data.total_tips || 0).toLocaleString('es-CO')}\n`;
+            info += `Nómina Pagada:    -$${(data.total_payroll || 0).toLocaleString('es-CO')}\n`;
+            info += `Egresos:          -$${(data.total_expenses || 0).toLocaleString('es-CO')}\n`;
+            info += "--------------------------------\n";
+            info += `Efectivo Esperado: $${(data.expected_cash || 0).toLocaleString('es-CO')}\n`;
+            info += `Efectivo Real:     $${(data.actual_cash || 0).toLocaleString('es-CO')}\n`;
+            info += `Diferencia:        $${(data.difference || 0).toLocaleString('es-CO')}\n\n`;
+            
+            await writer.write(encoder.encode(info));
+            
+            await writer.write(ALIGN_CENTER);
+            await writer.write(encoder.encode("FIN DEL TURNO\n\n\n\n\n"));
+            
+            await writer.write(CUT);
+            writer.releaseLock();
+        } catch(e) {
+            console.error("Error imprimiendo Reporte Z", e);
+        }
+    }
+
+
+    function openDianModal() {
+        if(!currentSelectedOrder) return;
+        document.getElementById('dian-modal').style.display = 'block';
+    }
+
+    async function generateDianInvoice() {
+        if(!currentSelectedOrder) return;
+        const doc_type = document.getElementById('dian-doc-type').value;
+        const doc_num = document.getElementById('dian-doc-num').value;
+        const name = document.getElementById('dian-name').value;
+        const email = document.getElementById('dian-email').value;
+        
+        if(!doc_num || !name) {
+            alert('Por favor ingresa número de documento y nombre.');
+            return;
+        }
+        
+        const payload = {
+            order_id: currentSelectedOrder.id,
+            document_type: doc_type,
+            document_number: doc_num,
+            name: name,
+            email: email
+        };
+        
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/dian/invoice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert(`Factura FEV generada (${result.invoice_number}) - CUFE: ${result.cufe}\n¡Ahora puedes proceder a cobrar la orden!`);
+                document.getElementById('dian-modal').style.display = 'none';
+                loadData(); // To refresh order notes
+            } else {
+                alert('Error al generar factura DIAN: ' + (result.detail || 'Error desconocido'));
+            }
+        } catch(e) {
+            alert('Error de conexión con la DIAN.');
+        }
+    }
+
+
+    async function loadReservations() {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/reservations', { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await res.json();
+            
+            const tbody = document.getElementById('reservations-list');
+            tbody.innerHTML = '';
+            data.forEach(r => {
+                const statusBadge = r.status === 'pending' ? '<span class="badge bg-warning text-dark">Pendiente</span>' : 
+                                  (r.status === 'arrived' ? '<span class="badge bg-success">Llegó</span>' : '<span class="badge bg-secondary">Cancelada</span>');
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${r.res_date}</td>
+                        <td>${r.res_time}</td>
+                        <td class="fw-bold">${r.name}</td>
+                        <td>${r.phone || '-'}</td>
+                        <td><span class="badge bg-primary rounded-pill">${r.guests}</span></td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            ${r.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="updateReservation(${r.id}, 'arrived')">Llegó</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('reservations-modal').style.display = 'block';
+        } catch(e) {
+            alert("Error al cargar reservas.");
+        }
+    }
+
+    async function updateReservation(id, status) {
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`/api/reservations/${id}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({status})
+            });
+            loadReservations();
+        } catch(e) {}
+    }
+
+    function showVenderBonoModal() {
+        document.getElementById('bono-value').value = '';
+        document.getElementById('vender-bono-modal').style.display = 'block';
+    }
+
+    async function confirmVenderBono() {
+        const valInput = document.getElementById('bono-value').value;
+        const val = parseInt(valInput);
+        if(!val || val < 1000) {
+            alert("El valor del bono debe ser mayor a $1000");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/vouchers/gift_card', {
+                method: 'POST',
+                headers: AUTH(),
+                body: JSON.stringify({ value_cop: val, type: "CUSTOMER", description: "Vendido en caja" })
+            });
+
+            if(res.ok) {
+                const data = await res.json();
+                alert(`¡Bono Generado Exitosamente!\n\nCÓDIGO: ${data.code}\nVALOR: $${data.value.toLocaleString('es-CO')}\n\nPor favor, entrégale este código al cliente.`);
+                document.getElementById('vender-bono-modal').style.display = 'none';
+                document.getElementById('bono-value').value = '50000'; // Reset
+            } else {
+                const error = await res.json();
+                alert("Error al generar bono: " + (error.detail || ""));
+            }
+        } catch(e) {
+            alert("Error de conexión al emitir bono.");
+        }
+    }
+
+    async function createDelivery() {
+        const name = document.getElementById('del-name').value.trim();
+        const phone = document.getElementById('del-phone').value.trim();
+        const address = document.getElementById('del-address').value.trim();
+        if(!name || !address) { alert('Nombre y dirección son obligatorios'); return; }
+        
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/pos/delivery', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ customer_name: name, customer_phone: phone, delivery_address: address })
+            });
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById('delivery-modal').style.display = 'none';
+                document.getElementById('del-name').value = '';
+                document.getElementById('del-phone').value = '';
+                document.getElementById('del-address').value = '';
+                await loadOpenOrders();
+            } else {
+                alert('Error al crear domicilio');
+            }
+        } catch(e) {
+            alert('Error de conexión');
+        }
+    }
+
+</script>
+
+
+<!-- Modal Facturación Electrónica DIAN -->
+<div class="modal" id="dian-modal" tabindex="-1" style="z-index: 2000;">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title">🧾 Facturación Electrónica DIAN</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('dian-modal').style.display='none'"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted">Ingresa los datos fiscales del cliente para generar el CUFE y enviarlo a la DIAN.</p>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Tipo Documento</label>
+            <select class="form-select" id="dian-doc-type">
+                <option value="CC">Cédula (CC)</option>
+                <option value="NIT">NIT</option>
+                <option value="CE">Cédula Extranjería (CE)</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Número de Documento</label>
+            <input type="text" class="form-control" id="dian-doc-num" placeholder="Ej. 123456789">
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Razón Social / Nombre Completo</label>
+            <input type="text" class="form-control" id="dian-name" placeholder="Ej. Juan Pérez / Empresa SAS">
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Correo Electrónico (Para envío de XML y PDF)</label>
+            <input type="email" class="form-control" id="dian-email" placeholder="ejemplo@correo.com">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('dian-modal').style.display='none'">Cancelar</button>
+        <button type="button" class="btn btn-dark fw-bold" onclick="generateDianInvoice()">🚀 Generar FEV y Cobrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Reservas -->
+<div class="modal" id="reservations-modal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold"><i class="bi bi-calendar-check"></i> Reservas Activas</h5>
+        <button type="button" class="btn-close" onclick="document.getElementById('reservations-modal').style.display='none'"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr><th>Fecha</th><th>Hora</th><th>Nombre</th><th>Teléfono</th><th>Pax</th><th>Estado</th><th>Acción</th></tr>
+                </thead>
+                <tbody id="reservations-list"></tbody>
+            </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- MODAL DE NUEVO DOMICILIO -->
+<div class="modal" id="delivery-modal" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">🛵 Nuevo Domicilio</h5>
+                <button type="button" class="btn-close" onclick="document.getElementById('delivery-modal').style.display='none'"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nombre del Cliente</label>
+                    <input type="text" class="form-control" id="del-name" placeholder="Ej: Juan Perez">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Teléfono</label>
+                    <input type="text" class="form-control" id="del-phone" placeholder="Ej: 3001234567">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Dirección de Entrega</label>
+                    <input type="text" class="form-control" id="del-address" placeholder="Ej: Calle 123 #45-67">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('delivery-modal').style.display='none'">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="createDelivery()">Crear Domicilio</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

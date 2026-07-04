@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartelera Digital</title>
+    <link href="libs/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden; /* Prevent scrolling on TV */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #ad-container {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 1s ease-in-out;
+            position: relative;
+        }
+
+        /* Overlay text for price */
+        .price-overlay {
+            position: absolute;
+            bottom: 10%;
+            left: 5%;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 5rem;
+            font-weight: 900;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+            border-left: 10px solid #f59e0b;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: slideIn 1s ease-out;
+        }
+
+        /* Distinct styling for Promos */
+        .price-overlay.promo {
+            border-left: 10px solid #ef4444;
+            color: #fef08a;
+            font-size: 6rem;
+            transform: scale(1.05);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Progress bar */
+        #progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 10px;
+            background-color: #f59e0b;
+            width: 0%;
+            transition: width linear;
+        }
+
+        .promo-badge {
+            position: absolute;
+            top: 5%;
+            right: 5%;
+            background-color: #ef4444;
+            color: white;
+            padding: 15px 30px;
+            font-size: 3rem;
+            font-weight: bold;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            text-transform: uppercase;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        #loading {
+            color: white;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading">Cargando Cartelera...</div>
+    
+    <div id="ad-container" style="display:none;">
+        <div id="promo-badge" class="promo-badge" style="display:none;">¡SÚPER PROMO!</div>
+        <div id="price-overlay" class="price-overlay"></div>
+        <div id="progress-bar"></div>
+    </div>
+
+    <script>
+        let ads = [];
+        let currentIndex = 0;
+        let timer = null;
+
+        async function fetchAds() {
+            try {
+                const res = await fetch('/api/ads');
+                const data = await res.json();
+                if(data.length > 0) {
+                    ads = data;
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('ad-container').style.display = 'block';
+                    if(!timer) showNextAd(); // start loop if not running
+                } else {
+                    document.getElementById('loading').style.display = 'flex';
+                    document.getElementById('loading').innerText = 'No hay anuncios configurados.';
+                    document.getElementById('ad-container').style.display = 'none';
+                }
+            } catch(e) {
+                console.error("Error fetching ads", e);
+            }
+        }
+
+        function showNextAd() {
+            if(ads.length === 0) return;
+            
+            const ad = ads[currentIndex];
+            
+            // Set background
+            const container = document.getElementById('ad-container');
+            container.style.backgroundImage = `url('${ad.image_url}')`;
+            
+            // Set text
+            const overlay = document.getElementById('price-overlay');
+            if(ad.price_text) {
+                overlay.innerText = ad.price_text;
+                overlay.style.display = 'block';
+            } else {
+                overlay.style.display = 'none';
+            }
+
+            // Promo styling
+            const promoBadge = document.getElementById('promo-badge');
+            if(ad.is_promo) {
+                overlay.classList.add('promo');
+                promoBadge.style.display = 'block';
+                document.getElementById('progress-bar').style.backgroundColor = '#ef4444';
+            } else {
+                overlay.classList.remove('promo');
+                promoBadge.style.display = 'none';
+                document.getElementById('progress-bar').style.backgroundColor = '#f59e0b';
+            }
+
+            // Progress bar animation
+            const bar = document.getElementById('progress-bar');
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+            
+            setTimeout(() => {
+                bar.style.transition = `width ${ad.duration}s linear`;
+                bar.style.width = '100%';
+            }, 50); // slight delay to allow CSS reset
+
+            // Next ad index
+            currentIndex = (currentIndex + 1) % ads.length;
+            
+            // Schedule next
+            timer = setTimeout(showNextAd, ad.duration * 1000);
+        }
+
+        // Fetch updates periodically in case new ads are uploaded
+        setInterval(fetchAds, 60000); // Check every minute
+        fetchAds();
+    </script>
+</body>
+</html>

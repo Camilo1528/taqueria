@@ -21,16 +21,26 @@
     </div>
 </div>
 <script>
-    fetch('/branding').then(r=>r.json()).then(d=>document.getElementById('waiter-title').innerText = d.business_name + " - Mapa");
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = 'login.html';
+
+    fetch('/branding').then(r=>r.json()).then(d=>{
+        let content = (d.business_name || "Mi Restaurante") + " - Mapa";
+        if (d.logo_url) {
+            content = `<img src="${d.logo_url}" style="height: 40px; margin-right: 10px; object-fit: contain; border-radius: 4px;">` + content;
+        }
+        document.getElementById('waiter-title').innerHTML = content;
+    });
 
     async function loadTables() {
-        const res = await fetch('/kitchen_data'); 
-        const orders = await res.json();
-        const activeTables = orders.map(o => o.table_number.toString());
+        const res = await fetch('/tables/status', { headers: { 'Authorization': 'Bearer ' + token } }); 
+        if(!res.ok) return;
+        const tablesData = await res.json();
         
         let html = '';
         for(let i=1; i<=12; i++) { 
-            const isOpen = activeTables.includes(i.toString());
+            const table = tablesData.find(t => t.name === "Mesa " + i);
+            const isOpen = table ? table.current_order_id !== null : false;
             const cls = isOpen ? 'table-open' : 'table-free';
             const status = isOpen ? 'Ocupada' : 'Libre';
             html += `<div class="col-4 col-md-3">

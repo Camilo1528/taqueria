@@ -48,6 +48,5 @@ def write_ticket(order_id: int, table_num: str, items: list, total: float, payme
         f.write(f"Pago:            {payment_method.upper():>13}\n")
         f.write("="*30 + "\n")
         f.write("  ¡Gracias por su compra! \n")
-        f.write("="*30 + "\n")
-
+        
     print_file_to_default_printer(os.path.abspath(filename))

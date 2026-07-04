@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Iniciar Sesión - Taquería Pro</title>
+    <link href="libs/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f3f4f6; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-card { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        .logo { width: 100px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="login-card text-center">
+    <h2 class="fw-bold mb-4" id="brand-name">Cargando...</h2>
+    
+    <ul class="nav nav-pills mb-3 justify-content-center" id="pills-tab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="pills-pin-tab" data-bs-toggle="pill" data-bs-target="#pills-pin" type="button" role="tab">Con PIN</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="pills-user-tab" data-bs-toggle="pill" data-bs-target="#pills-user" type="button" role="tab">Usuario</button>
+      </li>
+    </ul>
+    
+    <div class="tab-content" id="pills-tabContent">
+      <div class="tab-pane fade show active" id="pills-pin" role="tabpanel">
+          <input type="password" id="pin-input" class="form-control form-control-lg text-center mb-3" placeholder="Ingresa tu PIN" maxlength="6">
+          <button class="btn btn-primary btn-lg w-100 fw-bold" onclick="loginPin()">Entrar con PIN</button>
+      </div>
+      <div class="tab-pane fade" id="pills-user" role="tabpanel">
+          <input type="text" id="username-input" class="form-control mb-3" placeholder="Usuario">
+          <input type="password" id="password-input" class="form-control mb-3" placeholder="Contraseña">
+          <button class="btn btn-primary btn-lg w-100 fw-bold" onclick="loginUser()">Entrar</button>
+      </div>
+    </div>
+</div>
+
+<script src="libs/bootstrap.bundle.min.js"></script>
+<script>
+    fetch('/branding').then(res=>res.json()).then(data=>{
+        document.getElementById('brand-name').innerText = data.business_name || "Mi Restaurante";
+    });
+
+    function handleLoginResponse(res) {
+        if (!res.ok) {
+            alert("Credenciales inválidas");
+            return;
+        }
+        res.json().then(data => {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('role', data.role);
+            localStorage.setItem('username', data.username);
+            if (data.role === 'admin') window.location.href = 'admin.html';
+            else if (data.role === 'cajero') window.location.href = 'cashier.html';
+            else if (data.role === 'mesero') window.location.href = 'waiter.html';
+            else if (data.role === 'cocina') window.location.href = 'kitchen.html';
+            else window.location.href = 'customer.html';
+        });
+    }
+
+    async function loginPin() {
+        const pin = document.getElementById('pin-input').value;
+        const res = await fetch('/api/login/pin', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({pin})
+        });
+        handleLoginResponse(res);
+    }
+
+    async function loginUser() {
+        const username = document.getElementById('username-input').value;
+        const password = document.getElementById('password-input').value;
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, password})
+        });
+        handleLoginResponse(res);
+    }
+</script>
+</body>
+</html>

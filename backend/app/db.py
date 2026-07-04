@@ -1,14 +1,11 @@
 from __future__ import annotations
-import os
-import shutil
 import sqlite3
 from datetime import datetime, date
 from pathlib import Path
 from typing import Any
 from dotenv import load_dotenv
 
-from app.paths import BACKUP_DIR, DB_PATH, ensure_dirs
-from app.security import future_minutes, generate_code, hash_password
+from app.paths import DB_PATH, ensure_dirs
 
 load_dotenv()
 ensure_dirs()
@@ -68,6 +65,12 @@ class DB:
             con.execute(query, params)
             con.commit()
 
+    def insert(self, query: str, params: tuple = ()) -> int:
+        with self.connect() as con:
+            cur = con.execute(query, params)
+            con.commit()
+            return cur.lastrowid
+
     def sales_summary_today(self) -> dict[str, Any]:
         today = date.today().isoformat()
         rows = self.all("SELECT payment_method, total_cop FROM orders WHERE status='closed' AND substr(closed_at,1,10)=?", (today,))
@@ -77,7 +80,13 @@ class DB:
         for r in rows:
             m = r['payment_method'] or 'sin_definir'
             by_payment[m] = by_payment.get(m, 0) + r['total_cop']
-        return {'total': total, 'orders': len(rows), 'by_payment': by_payment, 'items': items, 'low_stock': self.all('SELECT * FROM inventory_items WHERE stock_current <= stock_min')}
+        
+        att = self.all("SELECT u.username, u.role, a.log_type, a.timestamp FROM attendance_logs a JOIN users u ON u.id = a.user_id WHERE substr(a.timestamp,1,10)=? ORDER BY a.timestamp DESC", (today,))
+        
+        expenses = self.all("SELECT SUM(amount) as t FROM expenses WHERE substr(date,1,10)=?", (today,))
+        total_expenses = expenses[0]['t'] or 0.0
+
+        return {'total': total, 'orders': len(rows), 'by_payment': by_payment, 'items': items, 'low_stock': self.all('SELECT * FROM inventory_items WHERE stock_current <= stock_min'), 'attendance': [dict(a) for a in att], 'total_expenses': total_expenses}
 
     def authenticate_user(self, username: str, password: str, verify_fn) -> tuple[bool, str, sqlite3.Row | None]:
         user = self.one('SELECT * FROM users WHERE username=? AND active=1', (username,))
@@ -86,7 +95,7 @@ class DB:
         return True, 'OK', user
 
     def authenticate_pin(self, pin: str) -> tuple[bool, str, sqlite3.Row | None]:
-        user = self.one("SELECT * FROM users WHERE role='cajero' AND pin=? AND active=1", (pin,))
+        user = self.one("SELECT * FROM users WHERE pin=? AND active=1", (pin,))
         if not user: return False, 'PIN inválido', None
         return True, 'OK', user
 
