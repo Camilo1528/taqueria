@@ -1,0 +1,13 @@
+﻿version: '3.8'
+
+services:
+  taqueria:
+    build: .
+    container_name: taqueria_app
+    ports:
+      - "80:8000"
+    volumes:
+      - ./backend/data:/app/backend/data
+      - ./backend/uploads:/app/backend/uploads
+      - ./backend/backups:/app/backend/backups
+    restart: unless-stopped
