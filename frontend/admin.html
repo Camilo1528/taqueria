@@ -1084,6 +1084,10 @@ function renderAdImages() {
     <div style="position:relative; width:100px; height:100px; flex-shrink:0;">
       <img src="${url}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">
       <button class="btn btn-sm btn-danger" style="position:absolute;top:5px;right:5px;padding:2px 6px;" onclick="removeAdImage(${i})"><i class="bi bi-trash"></i></button>
+      <div style="position:absolute;bottom:0;left:0;width:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:space-between;border-bottom-left-radius:8px;border-bottom-right-radius:8px;">
+        <button style="background:transparent;color:white;border:none;padding:4px 10px;cursor:${i===0?'default':'pointer'};opacity:${i===0?0.3:1}" onclick="moveAdImage(${i}, -1)" ${i===0?'disabled':''}><i class="bi bi-chevron-left"></i></button>
+        <button style="background:transparent;color:white;border:none;padding:4px 10px;cursor:${i===images.length-1?'default':'pointer'};opacity:${i===images.length-1?0.3:1}" onclick="moveAdImage(${i}, 1)" ${i===images.length-1?'disabled':''}><i class="bi bi-chevron-right"></i></button>
+      </div>
     </div>
   `).join('');
 }
@@ -1091,6 +1095,16 @@ function renderAdImages() {
 function removeAdImage(index) {
   let images = JSON.parse(document.getElementById('conf-ad-images').value);
   images.splice(index, 1);
+  document.getElementById('conf-ad-images').value = JSON.stringify(images);
+  renderAdImages();
+}
+
+function moveAdImage(index, dir) {
+  let images = JSON.parse(document.getElementById('conf-ad-images').value);
+  if(index + dir < 0 || index + dir >= images.length) return;
+  const temp = images[index];
+  images[index] = images[index + dir];
+  images[index + dir] = temp;
   document.getElementById('conf-ad-images').value = JSON.stringify(images);
   renderAdImages();
 }
