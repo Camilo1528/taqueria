@@ -291,6 +291,11 @@
           <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="generateQRs()"><i class="bi bi-printer-fill"></i> Generar e Imprimir QRs</button>
         </div>
         <div class="card">
+          <div class="section-title"><i class="bi bi-hdd-fill" style="color:var(--primary)"></i> Base de Datos</div>
+          <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Genera y descarga una copia de seguridad en formato ZIP.</p>
+          <button class="btn btn-primary" style="width:100%" onclick="downloadBackup()"><i class="bi bi-cloud-arrow-down-fill"></i> Descargar Backup Local</button>
+        </div>
+        <div class="card">
           <div class="section-title"><i class="bi bi-diagram-3-fill" style="color:#06b6d4"></i> Franquicia y Sincronizacion</div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span class="badge badge-success"><i class="bi bi-wifi"></i> Online</span><span style="font-size:12px;color:var(--text-muted)">Ultima sync: <span id="last-sync-time">Nunca</span></span></div>
           <button id="btn-sync" class="btn btn-outline" style="width:100%" onclick="syncToMaster()"><i class="bi bi-arrow-repeat"></i> Sincronizar Ahora</button>
@@ -527,6 +532,29 @@ function showSection(id, btn) {
 }
 
 function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+
+async function downloadBackup() {
+  try {
+    toast('Generando copia de seguridad, por favor espera...', 'info');
+    const r = await fetch('/api/admin/backup', {headers: AUTH()});
+    if(!r.ok) {
+      if(r.status === 403) throw new Error("Solo los administradores pueden hacer esto");
+      throw new Error("Error descargando backup");
+    }
+    const blob = await r.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_taqueria_${new Date().toISOString().split('T')[0]}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    toast('Backup descargado correctamente', 'success');
+  } catch(e) {
+    toast(e.message, 'error');
+  }
+}
 
 function toast(msg, type='success') {
   const c = document.getElementById('toasts');

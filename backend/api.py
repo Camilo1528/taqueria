@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, HTTPException, Security, Depends, WebSocket, WebSocketDisconnect, Header, UploadFile, File
+from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -452,6 +453,23 @@ def backup_db():
         zip_name = os.path.join(backup_dir, f"backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.zip")
         with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
             zipf.write(db_path, "taqueria.db")
+
+@app.get("/api/admin/backup")
+async def download_backup(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
+    # Run a fresh backup right now before downloading
+    backup_db()
+    
+    import glob
+    backup_dir = os.path.join(os.path.dirname(__file__), "backups")
+    list_of_files = glob.glob(f"{backup_dir}/*.zip")
+    if not list_of_files:
+        raise HTTPException(status_code=404, detail="No hay backups disponibles")
+    
+    latest_file = max(list_of_files, key=os.path.getctime)
+    return FileResponse(path=latest_file, filename=os.path.basename(latest_file), media_type='application/zip')
 
 schedule.every().day.at("03:00").do(backup_db)
 
