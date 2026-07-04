@@ -393,9 +393,16 @@ async def cfd_update(data: CFDUpdate, api_key: str = Depends(get_api_key)):
     return {"status": "ok"}
 
 @app.websocket("/ws/kitchen")
-async def websocket_endpoint(websocket: WebSocket, api_key: str = None):
-    if api_key != API_KEY:
-        await websocket.close(code=1008, reason="Invalid API Key")
+async def websocket_endpoint(websocket: WebSocket, token: str = None, api_key: str = None):
+    if api_key == API_KEY:
+        pass
+    elif token:
+        payload = verify_token(token)
+        if not payload:
+            await websocket.close(code=1008, reason="Invalid Token")
+            return
+    else:
+        await websocket.close(code=1008, reason="Invalid Credentials")
         return
     await manager.connect_kitchen(websocket)
     try:
@@ -440,7 +447,7 @@ def sync_receive(data: dict):
 def backup_db():
     backup_dir = os.path.join(os.path.dirname(__file__), "backups")
     os.makedirs(backup_dir, exist_ok=True)
-    db_path = os.path.join(os.path.dirname(__file__), "..", "taqueria.db")
+    db_path = os.path.join(os.path.dirname(__file__), "data", "taqueria.db")
     if os.path.exists(db_path):
         zip_name = os.path.join(backup_dir, f"backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.zip")
         with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:

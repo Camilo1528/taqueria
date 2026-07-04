@@ -1,4 +1,4 @@
-﻿version: '3.8'
+version: '3.8'
 
 services:
   taqueria:
@@ -10,4 +10,6 @@ services:
       - ./backend/data:/app/backend/data
       - ./backend/uploads:/app/backend/uploads
       - ./backend/backups:/app/backend/backups
+      - ./backend/qr_output:/app/backend/qr_output
+      - ./backend/tickets:/app/backend/tickets
     restart: unless-stopped
