@@ -16,11 +16,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     except Exception:
         return plain_password == hashed_password
 
-def generate_code() -> str:
-    return str(random.randint(100000, 999999))
-
-def future_minutes(minutes: int) -> str:
-    return (datetime.now() + timedelta(minutes=minutes)).isoformat()
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
