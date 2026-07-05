@@ -1,77 +1,129 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Repartidor - Taquería Pro</title>
-    <link href="libs/bootstrap.min.css" rel="stylesheet">
-    <link rel="manifest" href="manifest.json">
+    <link href="libs/bootstrap.min.css" rel="stylesheet" />
+    <link rel="manifest" href="manifest.json" />
     <style>
-        body { background-color: #f3f4f6; font-family: 'Segoe UI', sans-serif; padding-bottom: 70px; }
-        .order-card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 5px solid #3b82f6; }
-        .order-card.on-the-way { border-left-color: #f59e0b; }
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000; }
-        .nav-item { text-align: center; color: #6b7280; font-size: 12px; text-decoration: none; }
-        .nav-item.active { color: #3b82f6; font-weight: bold; }
-        .nav-icon { font-size: 24px; display: block; margin-bottom: 2px; }
+      body {
+        background-color: #f3f4f6;
+        font-family: "Segoe UI", sans-serif;
+        padding-bottom: 70px;
+      }
+      .order-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        border-left: 5px solid #3b82f6;
+      }
+      .order-card.on-the-way {
+        border-left-color: #f59e0b;
+      }
+      .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        background: white;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-around;
+        padding: 10px 0;
+        z-index: 1000;
+      }
+      .nav-item {
+        text-align: center;
+        color: #6b7280;
+        font-size: 12px;
+        text-decoration: none;
+      }
+      .nav-item.active {
+        color: #3b82f6;
+        font-weight: bold;
+      }
+      .nav-icon {
+        font-size: 24px;
+        display: block;
+        margin-bottom: 2px;
+      }
     </style>
-</head>
-<body>
-
-<div class="container-fluid p-3">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+  </head>
+  <body>
+    <div class="container-fluid p-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold m-0 text-primary">🛵 Delivery Pro</h3>
-        <button class="btn btn-sm btn-outline-danger" onclick="logout()">Salir</button>
-    </div>
+        <button class="btn btn-sm btn-outline-danger" onclick="logout()">
+          Salir
+        </button>
+      </div>
 
-    <div id="pending-orders">
+      <div id="pending-orders">
         <h5 class="fw-bold mb-3 text-secondary">Pedidos Pendientes</h5>
         <div id="orders-list">
-            <div class="text-center text-muted mt-5">Cargando pedidos...</div>
+          <div class="text-center text-muted mt-5">Cargando pedidos...</div>
         </div>
+      </div>
     </div>
-</div>
 
-<script>
-    const token = localStorage.getItem('token');
-    if (!token) window.location.href = 'index.html';
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "index.html";
 
-    async function loadOrders() {
+      async function loadOrders() {
         try {
-            const res = await fetch('/api/delivery/pending', { headers: { 'Authorization': 'Bearer ' + token } });
-            if(res.status === 401) { window.location.href = 'index.html'; return; }
-            const orders = await res.json();
-            
-            const list = document.getElementById('orders-list');
-            list.innerHTML = '';
-            
-            if(orders.length === 0) {
-                list.innerHTML = '<div class="text-center text-muted mt-5"><h4>📭</h4>No hay domicilios pendientes.</div>';
-                return;
-            }
+          const res = await fetch("/api/delivery/pending", {
+            headers: { Authorization: "Bearer " + token },
+          });
+          if (res.status === 401) {
+            window.location.href = "index.html";
+            return;
+          }
+          const orders = await res.json();
 
-            orders.forEach(o => {
-                let statusBadge = '';
-                let actionBtn = '';
-                
-                // If it has NO driver, or I am the driver and it's not on the way yet
-                if (!o.driver_id || o.kitchen_status !== 'on_the_way') {
-                    statusBadge = '<span class="badge bg-primary">Disponible</span>';
-                    actionBtn = `<button class="btn btn-primary w-100 fw-bold" onclick="assignOrder(${o.id})">🚀 Aceptar Pedido</button>`;
-                } else if (o.kitchen_status === 'on_the_way') {
-                    statusBadge = '<span class="badge bg-warning text-dark">En Camino</span>';
-                    // Extract address (assuming it's in the notes or table_name. Here table_name is "Domicilio - Dirección")
-                    const address = o.table_name.replace('Domicilio', '').trim().replace(/^- /,'');
-                    actionBtn = `
+          const list = document.getElementById("orders-list");
+          list.innerHTML = "";
+
+          if (orders.length === 0) {
+            list.innerHTML =
+              '<div class="text-center text-muted mt-5"><h4>📭</h4>No hay domicilios pendientes.</div>';
+            return;
+          }
+
+          orders.forEach((o) => {
+            let statusBadge = "";
+            let actionBtn = "";
+
+            // If it has NO driver, or I am the driver and it's not on the way yet
+            if (!o.driver_id || o.kitchen_status !== "on_the_way") {
+              statusBadge = '<span class="badge bg-primary">Disponible</span>';
+              actionBtn = `<button class="btn btn-primary w-100 fw-bold" onclick="assignOrder(${o.id})">🚀 Aceptar Pedido</button>`;
+            } else if (o.kitchen_status === "on_the_way") {
+              statusBadge =
+                '<span class="badge bg-warning text-dark">En Camino</span>';
+              // Extract address (assuming it's in the notes or table_name. Here table_name is "Domicilio - Dirección")
+              const address = o.table_name
+                .replace("Domicilio", "")
+                .trim()
+                .replace(/^- /, "");
+              actionBtn = `
                         <a href="https://maps.google.com/?q=${encodeURIComponent(address)}" target="_blank" class="btn btn-outline-dark w-100 fw-bold mb-2">🗺️ Abrir en GPS</a>
                         <button class="btn btn-success w-100 fw-bold" onclick="completeOrder(${o.id})">✅ Marcar Entregado</button>
                     `;
-                }
+            }
 
-                let itemsHtml = o.items.map(i => `<small class="text-muted d-block">• ${i.qty}x ${i.product_name}</small>`).join('');
+            let itemsHtml = o.items
+              .map(
+                (i) =>
+                  `<small class="text-muted d-block">• ${i.qty}x ${i.product_name}</small>`,
+              )
+              .join("");
 
-                list.innerHTML += `
-                <div class="card order-card p-3 mb-3 ${o.kitchen_status === 'on_the_way' ? 'on-the-way' : ''}">
+            list.innerHTML += `
+                <div class="card order-card p-3 mb-3 ${o.kitchen_status === "on_the_way" ? "on-the-way" : ""}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <strong class="fs-5">Ticket #${o.id}</strong>
                         ${statusBadge}
@@ -80,37 +132,43 @@
                     <div class="mb-3">${itemsHtml}</div>
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <span class="text-muted">A cobrar:</span>
-                        <strong class="fs-4 text-success">$${o.total_cop.toLocaleString('es-CO')}</strong>
+                        <strong class="fs-4 text-success">$${o.total_cop.toLocaleString("es-CO")}</strong>
                     </div>
                     ${actionBtn}
                 </div>`;
-            });
+          });
         } catch (e) {
-            console.error(e);
+          console.error(e);
         }
-    }
+      }
 
-    async function assignOrder(id) {
-        if(!confirm("¿Aceptar este domicilio?")) return;
-        await fetch(`/api/delivery/assign/${id}`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+      async function assignOrder(id) {
+        if (!confirm("¿Aceptar este domicilio?")) return;
+        await fetch(`/api/delivery/assign/${id}`, {
+          method: "POST",
+          headers: { Authorization: "Bearer " + token },
+        });
         loadOrders();
-    }
+      }
 
-    async function completeOrder(id) {
-        if(!confirm("¿Confirmar entrega al cliente?")) return;
-        await fetch(`/api/delivery/complete/${id}`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+      async function completeOrder(id) {
+        if (!confirm("¿Confirmar entrega al cliente?")) return;
+        await fetch(`/api/delivery/complete/${id}`, {
+          method: "POST",
+          headers: { Authorization: "Bearer " + token },
+        });
         loadOrders();
-    }
+      }
 
-    function logout() {
-        localStorage.removeItem('token');
-        window.location.href = 'index.html';
-    }
+      function logout() {
+        localStorage.removeItem("token");
+        window.location.href = "index.html";
+      }
 
-    // Auto-refresh every 10 seconds
-    setInterval(loadOrders, 10000);
-    loadOrders();
-</script>
-<script src="/core.js"></script>
-</body>
+      // Auto-refresh every 10 seconds
+      setInterval(loadOrders, 10000);
+      loadOrders();
+    </script>
+    <script src="/core.js"></script>
+  </body>
 </html>

@@ -1,119 +1,175 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pantalla de Cliente - Taquería Pro</title>
-    <link href="libs/bootstrap.min.css" rel="stylesheet">
+    <link href="libs/bootstrap.min.css" rel="stylesheet" />
     <style>
-        body { background-color: #111827; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh;}
-        .ticket-panel { background: #1f2937; border-right: 2px solid #374151; height: 100vh; display: flex; flex-direction: column; }
-        .ad-panel { background-color: #000; height: 100vh; overflow: hidden; position: relative; }
-        .ad-image { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
-        .ad-text { position: absolute; bottom: 10%; width: 100%; text-align: center; text-shadow: 2px 2px 8px rgba(0,0,0,0.8); }
-        .item-row { border-bottom: 1px solid #374151; padding: 15px 0; }
-        .total-box { background: #10b981; padding: 20px; border-radius: 10px; text-align: center; margin-top: auto; margin-bottom: 20px; }
+      body {
+        background-color: #111827;
+        color: white;
+        font-family: "Segoe UI", sans-serif;
+        overflow: hidden;
+        height: 100vh;
+      }
+      .ticket-panel {
+        background: #1f2937;
+        border-right: 2px solid #374151;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .ad-panel {
+        background-color: #000;
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+      }
+      .ad-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.8;
+      }
+      .ad-text {
+        position: absolute;
+        bottom: 10%;
+        width: 100%;
+        text-align: center;
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+      }
+      .item-row {
+        border-bottom: 1px solid #374151;
+        padding: 15px 0;
+      }
+      .total-box {
+        background: #10b981;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        margin-top: auto;
+        margin-bottom: 20px;
+      }
     </style>
-  <link rel="manifest" href="/manifest.json">
-</head>
-<body>
-
-<div class="row g-0 h-100">
-    <!-- Panel Izquierdo: Ticket -->
-    <div class="col-4 ticket-panel p-4">
+    <link rel="manifest" href="/manifest.json" />
+  </head>
+  <body>
+    <div class="row g-0 h-100">
+      <!-- Panel Izquierdo: Ticket -->
+      <div class="col-4 ticket-panel p-4">
         <h2 class="fw-bold mb-1 text-center" id="brand-name">Cargando...</h2>
-        <h5 class="text-center text-muted mb-4">Mesa <span id="cfd-table">--</span></h5>
-        
+        <h5 class="text-center text-muted mb-4">
+          Mesa <span id="cfd-table">--</span>
+        </h5>
+
         <div id="cfd-items" class="flex-grow-1 overflow-auto pe-2">
-            <h4 class="text-center text-secondary mt-5">Esperando orden...</h4>
+          <h4 class="text-center text-secondary mt-5">Esperando orden...</h4>
         </div>
 
         <div class="total-box shadow-lg">
-            <h5 class="mb-1 text-white-50">TOTAL A PAGAR</h5>
-            <h1 class="fw-bold m-0" id="cfd-total">$0</h1>
+          <h5 class="mb-1 text-white-50">TOTAL A PAGAR</h5>
+          <h1 class="fw-bold m-0" id="cfd-total">$0</h1>
         </div>
-    </div>
+      </div>
 
-    <!-- Panel Derecho: Publicidad / Imágenes Atractivas -->
-    <div class="col-8 ad-panel">
-        <img id="ad-img" src="https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1080&q=80" class="ad-image" alt="Tacos">
+      <!-- Panel Derecho: Publicidad / Imágenes Atractivas -->
+      <div class="col-8 ad-panel">
+        <img
+          id="ad-img"
+          src="https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1080&q=80"
+          class="ad-image"
+          alt="Tacos"
+        />
         <div class="ad-text px-5">
-            <h1 class="display-3 fw-bold text-white">¡Pruébalos con Guacamole Extra!</h1>
-            <h3 class="text-warning">Pregunta por nuestras promociones</h3>
+          <h1 class="display-3 fw-bold text-white">
+            ¡Pruébalos con Guacamole Extra!
+          </h1>
+          <h3 class="text-warning">Pregunta por nuestras promociones</h3>
         </div>
+      </div>
     </div>
-</div>
 
-<script>
-    const API_KEY = "123456";
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/cfd?api_key=${API_KEY}`;
-    
-    let ws = new WebSocket(wsUrl);
-    
-    ws.onmessage = (event) => {
+    <script>
+      const API_KEY = "123456";
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws/cfd?api_key=${API_KEY}`;
+
+      let ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        
+
         if (!data.order_id) {
-            document.getElementById('cfd-items').innerHTML = `<h4 class="text-center text-secondary mt-5">Esperando orden...</h4>`;
-            document.getElementById('cfd-total').innerText = "$0";
-            document.getElementById('cfd-table').innerText = "--";
-            return;
+          document.getElementById("cfd-items").innerHTML =
+            `<h4 class="text-center text-secondary mt-5">Esperando orden...</h4>`;
+          document.getElementById("cfd-total").innerText = "$0";
+          document.getElementById("cfd-table").innerText = "--";
+          return;
         }
 
-        document.getElementById('cfd-table').innerText = data.table || "--";
-        document.getElementById('cfd-total').innerText = '$' + data.total.toLocaleString('es-CO');
-        
-        let itemsHtml = '';
-        data.items.forEach(item => {
-            itemsHtml += `
+        document.getElementById("cfd-table").innerText = data.table || "--";
+        document.getElementById("cfd-total").innerText =
+          "$" + data.total.toLocaleString("es-CO");
+
+        let itemsHtml = "";
+        data.items.forEach((item) => {
+          itemsHtml += `
                 <div class="item-row d-flex justify-content-between align-items-center">
                     <div class="fs-4">
                         <span class="text-success fw-bold me-2">${item.qty}x</span> 
                         ${item.product_name}
                     </div>
                     <div class="fs-4 fw-bold">
-                        $${item.total_cop.toLocaleString('es-CO')}
+                        $${item.total_cop.toLocaleString("es-CO")}
                     </div>
                 </div>
             `;
         });
-        
-        document.getElementById('cfd-items').innerHTML = itemsHtml;
-    };
 
-    ws.onclose = () => setTimeout(() => { ws = new WebSocket(wsUrl); }, 3000);
+        document.getElementById("cfd-items").innerHTML = itemsHtml;
+      };
 
-    // Cargar Marca Blanca y Publicidad
-    let adImages = [
+      ws.onclose = () =>
+        setTimeout(() => {
+          ws = new WebSocket(wsUrl);
+        }, 3000);
+
+      // Cargar Marca Blanca y Publicidad
+      let adImages = [
         "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1080&q=80",
         "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=1080&q=80",
-        "https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?auto=format&fit=crop&w=1080&q=80"
-    ];
+        "https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?auto=format&fit=crop&w=1080&q=80",
+      ];
 
-    fetch('/branding')
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('brand-name').innerText = data.business_name || "Mi Restaurante";
-            document.title = (data.business_name || "Mi Restaurante") + " - Pantalla de Cliente";
-            document.body.style.setProperty('--brand-color', data.theme_color || '#10b981');
-            
-            if (data.ad_images && data.ad_images.length > 0) {
-                adImages = data.ad_images;
-                document.getElementById('ad-img').src = adImages[0];
-            }
+      fetch("/branding")
+        .then((res) => res.json())
+        .then((data) => {
+          document.getElementById("brand-name").innerText =
+            data.business_name || "Mi Restaurante";
+          document.title =
+            (data.business_name || "Mi Restaurante") + " - Pantalla de Cliente";
+          document.body.style.setProperty(
+            "--brand-color",
+            data.theme_color || "#10b981",
+          );
+
+          if (data.ad_images && data.ad_images.length > 0) {
+            adImages = data.ad_images;
+            document.getElementById("ad-img").src = adImages[0];
+          }
         });
 
-    // Rotación de Imágenes para antojarlos
-    let idx = 0;
-    setInterval(() => {
-        if(adImages.length > 0) {
-            idx = (idx + 1) % adImages.length;
-            document.getElementById('ad-img').src = adImages[idx];
+      // Rotación de Imágenes para antojarlos
+      let idx = 0;
+      setInterval(() => {
+        if (adImages.length > 0) {
+          idx = (idx + 1) % adImages.length;
+          document.getElementById("ad-img").src = adImages[idx];
         }
-    }, 10000);
-</script>
+      }, 10000);
+    </script>
 
-<script src="/core.js"></script>
-</body>
+    <script src="/core.js"></script>
+  </body>
 </html>

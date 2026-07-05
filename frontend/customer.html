@@ -1,383 +1,651 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Menú Auto-Servicio</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <style>
-        body { background-color: #f8f9fa; padding-bottom: 80px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .header { background: #dc3545; color: white; padding: 15px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .product-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-        .product-info { flex: 1; }
-        .product-name { font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; }
-        .product-price { color: #198754; font-weight: bold; font-size: 1.1rem; }
-        .qty-controls { display: flex; align-items: center; gap: 10px; }
-        .qty-btn { width: 35px; height: 35px; border-radius: 50%; border: none; background: #e9ecef; color: #333; font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
-        .qty-val { font-weight: bold; font-size: 1.2rem; min-width: 20px; text-align: center; }
-        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #212529; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1050; border-top-left-radius: 15px; border-top-right-radius: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.2); transition: transform 0.3s; transform: translateY(100%); }
-        .cart-bar.active { transform: translateY(0); }
-        .cart-btn { background: #198754; color: white; border: none; padding: 10px 20px; border-radius: 25px; font-weight: bold; }
-        
-        /* Modal for Cart */
-        .cart-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 2000; display: none; flex-direction: column; }
-        .cart-modal.active { display: flex; }
-        .cart-modal-header { padding: 15px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
-        .cart-modal-body { flex: 1; overflow-y: auto; padding: 15px; }
-        .cart-modal-footer { padding: 15px; border-top: 1px solid #ddd; }
-        
-        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+      body {
+        background-color: #f8f9fa;
+        padding-bottom: 80px;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .header {
+        background: #dc3545;
+        color: white;
+        padding: 15px;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .product-card {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .product-info {
+        flex: 1;
+      }
+      .product-name {
+        font-weight: bold;
+        font-size: 1.1rem;
+        margin-bottom: 5px;
+      }
+      .product-price {
+        color: #198754;
+        font-weight: bold;
+        font-size: 1.1rem;
+      }
+      .qty-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .qty-btn {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        border: none;
+        background: #e9ecef;
+        color: #333;
+        font-weight: bold;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .qty-val {
+        font-weight: bold;
+        font-size: 1.2rem;
+        min-width: 20px;
+        text-align: center;
+      }
+      .cart-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #212529;
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 1050;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+        box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s;
+        transform: translateY(100%);
+      }
+      .cart-bar.active {
+        transform: translateY(0);
+      }
+      .cart-btn {
+        background: #198754;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 25px;
+        font-weight: bold;
+      }
 
-        /* Category Tabs */
-        .cat-tabs { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; background: white; position: sticky; top: 55px; z-index: 900; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        .cat-tabs::-webkit-scrollbar { display: none; }
-        .cat-tab { white-space: nowrap; padding: 7px 18px; border-radius: 20px; border: 2px solid #dc3545; background: transparent; color: #dc3545; font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
-        .cat-tab.active { background: #dc3545; color: white; }
-        .cat-section-title { font-size: 1rem; font-weight: 700; color: #333; padding: 12px 0 6px; border-bottom: 2px solid #f0f0f0; margin-bottom: 10px; }
+      /* Modal for Cart */
+      .cart-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: white;
+        z-index: 2000;
+        display: none;
+        flex-direction: column;
+      }
+      .cart-modal.active {
+        display: flex;
+      }
+      .cart-modal-header {
+        padding: 15px;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #ddd;
+      }
+      .cart-modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+      }
+      .cart-modal-footer {
+        padding: 15px;
+        border-top: 1px solid #ddd;
+      }
+
+      .cart-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #eee;
+      }
+
+      /* Category Tabs */
+      .cat-tabs {
+        display: flex;
+        gap: 8px;
+        padding: 12px 16px;
+        overflow-x: auto;
+        background: white;
+        position: sticky;
+        top: 55px;
+        z-index: 900;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+      .cat-tabs::-webkit-scrollbar {
+        display: none;
+      }
+      .cat-tab {
+        white-space: nowrap;
+        padding: 7px 18px;
+        border-radius: 20px;
+        border: 2px solid #dc3545;
+        background: transparent;
+        color: #dc3545;
+        font-weight: 600;
+        font-size: 0.88rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+      .cat-tab.active {
+        background: #dc3545;
+        color: white;
+      }
+      .cat-section-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #333;
+        padding: 12px 0 6px;
+        border-bottom: 2px solid #f0f0f0;
+        margin-bottom: 10px;
+      }
     </style>
-  <link rel="manifest" href="/manifest.json">
-</head>
-<body>
-
+    <link rel="manifest" href="/manifest.json" />
+  </head>
+  <body>
     <div class="header" id="main-header">
-        <div class="d-flex align-items-center">
-            <img id="header-logo" src="" style="height: 30px; margin-right: 10px; display: none; object-fit: contain; border-radius: 4px;">
-            <h5 class="m-0" id="table-title">Cargando Mesa...</h5>
-        </div>
-        <small id="header-subtitle">Realiza tu pedido directo a cocina</small>
+      <div class="d-flex align-items-center">
+        <img
+          id="header-logo"
+          src=""
+          style="
+            height: 30px;
+            margin-right: 10px;
+            display: none;
+            object-fit: contain;
+            border-radius: 4px;
+          "
+        />
+        <h5 class="m-0" id="table-title">Cargando Mesa...</h5>
+      </div>
+      <small id="header-subtitle">Realiza tu pedido directo a cocina</small>
     </div>
 
-    <div id="cat-tabs-bar" class="cat-tabs" style="display:none"></div>
+    <div id="cat-tabs-bar" class="cat-tabs" style="display: none"></div>
 
     <div class="container mt-3" id="menu-container">
-        <!-- Products will be loaded here -->
-        <div class="text-center mt-5">
-            <div class="spinner-border text-danger" role="status"></div>
-            <p class="mt-2 text-muted">Cargando menú...</p>
-        </div>
+      <!-- Products will be loaded here -->
+      <div class="text-center mt-5">
+        <div class="spinner-border text-danger" role="status"></div>
+        <p class="mt-2 text-muted">Cargando menú...</p>
+      </div>
     </div>
 
     <div class="cart-bar" id="cart-bar">
-        <div>
-            <div class="fw-bold" id="cart-count">0 items</div>
-            <div class="text-success fw-bold" id="cart-total">$0</div>
-        </div>
-        <button class="cart-btn" onclick="openCart()">Ver Pedido</button>
+      <div>
+        <div class="fw-bold" id="cart-count">0 items</div>
+        <div class="text-success fw-bold" id="cart-total">$0</div>
+      </div>
+      <button class="cart-btn" onclick="openCart()">Ver Pedido</button>
     </div>
 
     <!-- Cart Modal -->
     <div class="cart-modal" id="cart-modal">
-        <div class="cart-modal-header">
-            <h4 class="m-0 fw-bold">Tu Pedido</h4>
-            <button class="btn-close" onclick="closeCart()"></button>
+      <div class="cart-modal-header">
+        <h4 class="m-0 fw-bold">Tu Pedido</h4>
+        <button class="btn-close" onclick="closeCart()"></button>
+      </div>
+      <div class="cart-modal-body" id="cart-items">
+        <!-- Cart items here -->
+      </div>
+      <div
+        id="delivery-info-form"
+        style="display: none; padding: 15px; border-top: 1px solid #eee"
+      >
+        <h5 class="fw-bold mb-3">Datos de Envío</h5>
+        <div class="mb-2">
+          <input
+            type="text"
+            class="form-control"
+            id="del-name"
+            placeholder="Tu Nombre"
+            required
+          />
         </div>
-        <div class="cart-modal-body" id="cart-items">
-            <!-- Cart items here -->
+        <div class="mb-2">
+          <input
+            type="tel"
+            class="form-control"
+            id="del-phone"
+            placeholder="Tu Teléfono"
+            required
+          />
         </div>
-        <div id="delivery-info-form" style="display:none; padding: 15px; border-top: 1px solid #eee;">
-            <h5 class="fw-bold mb-3">Datos de Envío</h5>
-            <div class="mb-2">
-                <input type="text" class="form-control" id="del-name" placeholder="Tu Nombre" required>
-            </div>
-            <div class="mb-2">
-                <input type="tel" class="form-control" id="del-phone" placeholder="Tu Teléfono" required>
-            </div>
-            <div class="mb-2">
-                <input type="text" class="form-control" id="del-address" placeholder="Tu Dirección Completa" required>
-            </div>
+        <div class="mb-2">
+          <input
+            type="text"
+            class="form-control"
+            id="del-address"
+            placeholder="Tu Dirección Completa"
+            required
+          />
         </div>
-        <div class="cart-modal-footer">
-            <div class="d-flex justify-content-between mb-3">
-                <span class="fs-5 fw-bold">Total:</span>
-                <span class="fs-5 fw-bold text-success" id="modal-total">$0</span>
-            </div>
-            <button class="btn btn-danger w-100 py-3 fs-5 fw-bold rounded-3" onclick="submitOrder()" id="submit-btn">Enviar a Cocina</button>
+      </div>
+      <div class="cart-modal-footer">
+        <div class="d-flex justify-content-between mb-3">
+          <span class="fs-5 fw-bold">Total:</span>
+          <span class="fs-5 fw-bold text-success" id="modal-total">$0</span>
         </div>
+        <button
+          class="btn btn-danger w-100 py-3 fs-5 fw-bold rounded-3"
+          onclick="submitOrder()"
+          id="submit-btn"
+        >
+          Enviar a Cocina
+        </button>
+      </div>
     </div>
 
     <!-- Modifier Modal -->
     <div class="cart-modal" id="modifier-modal">
-        <div class="cart-modal-content bg-white" style="border-radius:15px; max-width:90%; margin:20% auto; padding:20px;">
-            <div class="d-flex justify-content-between mb-3">
-                <h4 class="fw-bold m-0" id="mod-title">Producto</h4>
-                <button class="btn-close" onclick="closeModifierModal()"></button>
-            </div>
-            <div class="mb-3">
-                <label class="form-label text-muted">¿Alguna preferencia? (Ej. Sin cebolla, Extra salsa)</label>
-                <div class="d-flex flex-wrap gap-2 mb-2">
-                    <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('mod-notes').value += 'Sin cebolla '">Sin cebolla</button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('mod-notes').value += 'Extra salsa '">Extra salsa</button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('mod-notes').value += 'Para llevar '">Para llevar</button>
-                </div>
-                <textarea id="mod-notes" class="form-control" rows="2" placeholder="Notas adicionales..."></textarea>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <span class="fw-bold">Cantidad:</span>
-                <div class="qty-controls" style="position:static">
-                    <button class="qty-btn" onclick="modQty(-1)">-</button>
-                    <span class="qty-val" id="mod-qty">1</span>
-                    <button class="qty-btn text-white bg-success" onclick="modQty(1)">+</button>
-                </div>
-            </div>
-            <button class="btn btn-success w-100 p-3 fw-bold rounded-4" onclick="confirmAdd()">Agregar a la Orden</button>
+      <div
+        class="cart-modal-content bg-white"
+        style="
+          border-radius: 15px;
+          max-width: 90%;
+          margin: 20% auto;
+          padding: 20px;
+        "
+      >
+        <div class="d-flex justify-content-between mb-3">
+          <h4 class="fw-bold m-0" id="mod-title">Producto</h4>
+          <button class="btn-close" onclick="closeModifierModal()"></button>
         </div>
+        <div class="mb-3">
+          <label class="form-label text-muted"
+            >¿Alguna preferencia? (Ej. Sin cebolla, Extra salsa)</label
+          >
+          <div class="d-flex flex-wrap gap-2 mb-2">
+            <button
+              class="btn btn-sm btn-outline-secondary"
+              onclick="
+                document.getElementById('mod-notes').value += 'Sin cebolla '
+              "
+            >
+              Sin cebolla
+            </button>
+            <button
+              class="btn btn-sm btn-outline-secondary"
+              onclick="
+                document.getElementById('mod-notes').value += 'Extra salsa '
+              "
+            >
+              Extra salsa
+            </button>
+            <button
+              class="btn btn-sm btn-outline-secondary"
+              onclick="
+                document.getElementById('mod-notes').value += 'Para llevar '
+              "
+            >
+              Para llevar
+            </button>
+          </div>
+          <textarea
+            id="mod-notes"
+            class="form-control"
+            rows="2"
+            placeholder="Notas adicionales..."
+          ></textarea>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <span class="fw-bold">Cantidad:</span>
+          <div class="qty-controls" style="position: static">
+            <button class="qty-btn" onclick="modQty(-1)">-</button>
+            <span class="qty-val" id="mod-qty">1</span>
+            <button class="qty-btn text-white bg-success" onclick="modQty(1)">
+              +
+            </button>
+          </div>
+        </div>
+        <button
+          class="btn btn-success w-100 p-3 fw-bold rounded-4"
+          onclick="confirmAdd()"
+        >
+          Agregar a la Orden
+        </button>
+      </div>
     </div>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        let tableId = urlParams.get('table');
-        const isDomicilio = urlParams.get('domicilio');
-        
-        let products = [];
-        let categories = [];
-        let activeCategory = 'all';
+      const urlParams = new URLSearchParams(window.location.search);
+      let tableId = urlParams.get("table");
+      const isDomicilio = urlParams.get("domicilio");
 
-        async function init() {
-            if (isDomicilio) {
-                tableId = -1;
-                document.getElementById('table-title').innerText = "🛵 Pedido a Domicilio";
-                document.getElementById('delivery-info-form').style.display = 'block';
+      let products = [];
+      let categories = [];
+      let activeCategory = "all";
+
+      async function init() {
+        if (isDomicilio) {
+          tableId = -1;
+          document.getElementById("table-title").innerText =
+            "🛵 Pedido a Domicilio";
+          document.getElementById("delivery-info-form").style.display = "block";
+        } else {
+          if (!tableId) {
+            document.getElementById("table-title").innerText =
+              "Error: Mesa no identificada";
+            document.getElementById("menu-container").innerHTML =
+              "<div class='alert alert-danger m-3'>Por favor, escanea el código QR de tu mesa nuevamente.</div>";
+            return;
+          }
+          document.getElementById("table-title").innerText = "Mesa " + tableId;
+        }
+
+        try {
+          const bRes = await fetch("/branding");
+          if (bRes.ok) {
+            const bData = await bRes.json();
+            if (bData.theme_color)
+              document.getElementById("main-header").style.backgroundColor =
+                bData.theme_color;
+            if (bData.logo_url) {
+              const logoImg = document.getElementById("header-logo");
+              logoImg.src = bData.logo_url;
+              logoImg.style.display = "block";
+            }
+            if (bData.business_name) {
+              document.title = bData.business_name + " - Menú";
+              document.getElementById("header-subtitle").innerText =
+                "Bienvenidos a " + bData.business_name;
+            }
+          }
+        } catch (e) {}
+
+        try {
+          const [menuRes, catRes] = await Promise.all([
+            fetch("/api/customer/menu"),
+            fetch("/api/categories"),
+          ]);
+          products = await menuRes.json();
+          categories = catRes.ok ? await catRes.json() : [];
+          renderCategoryTabs();
+          renderMenu();
+        } catch (e) {
+          document.getElementById("menu-container").innerHTML =
+            "<div class='alert alert-danger m-3'>Error al cargar el menú.</div>";
+        }
+      }
+
+      let cart = [];
+
+      function renderCategoryTabs() {
+        const bar = document.getElementById("cat-tabs-bar");
+        if (!categories || categories.length === 0) return;
+        bar.style.display = "flex";
+
+        let html = `<button class="cat-tab active" onclick="filterCategory('all', this)">🍽️ Todos</button>`;
+        categories.forEach((c) => {
+          html += `<button class="cat-tab" onclick="filterCategory(${c.id}, this)">${c.name}</button>`;
+        });
+        bar.innerHTML = html;
+      }
+
+      function filterCategory(catId, btn) {
+        activeCategory = catId;
+        document
+          .querySelectorAll(".cat-tab")
+          .forEach((t) => t.classList.remove("active"));
+        btn.classList.add("active");
+        renderMenu();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function renderMenu() {
+        const container = document.getElementById("menu-container");
+        container.innerHTML = "";
+
+        let filtered =
+          activeCategory === "all"
+            ? products
+            : products.filter((p) => p.category_id === activeCategory);
+
+        if (filtered.length === 0) {
+          container.innerHTML =
+            "<div class='text-center mt-5 text-muted'>No hay productos en esta categoría.</div>";
+          return;
+        }
+
+        if (activeCategory === "all" && categories.length > 0) {
+          // Group by category
+          const catMap = {};
+          categories.forEach((c) => {
+            catMap[c.id] = c.name;
+          });
+          const grouped = {};
+          const uncategorized = [];
+          filtered.forEach((p) => {
+            if (p.category_id && catMap[p.category_id]) {
+              if (!grouped[p.category_id])
+                grouped[p.category_id] = {
+                  name: catMap[p.category_id],
+                  items: [],
+                };
+              grouped[p.category_id].items.push(p);
             } else {
-                if (!tableId) {
-                    document.getElementById('table-title').innerText = "Error: Mesa no identificada";
-                    document.getElementById('menu-container').innerHTML = "<div class='alert alert-danger m-3'>Por favor, escanea el código QR de tu mesa nuevamente.</div>";
-                    return;
-                }
-                document.getElementById('table-title').innerText = "Mesa " + tableId;
+              uncategorized.push(p);
             }
-            
-            try {
-                const bRes = await fetch('/branding');
-                if(bRes.ok) {
-                    const bData = await bRes.json();
-                    if(bData.theme_color) document.getElementById('main-header').style.backgroundColor = bData.theme_color;
-                    if(bData.logo_url) {
-                        const logoImg = document.getElementById('header-logo');
-                        logoImg.src = bData.logo_url;
-                        logoImg.style.display = 'block';
-                    }
-                    if(bData.business_name) {
-                        document.title = bData.business_name + " - Menú";
-                        document.getElementById('header-subtitle').innerText = "Bienvenidos a " + bData.business_name;
-                    }
-                }
-            } catch(e) {}
+          });
 
-            try {
-                const [menuRes, catRes] = await Promise.all([
-                    fetch('/api/customer/menu'),
-                    fetch('/api/categories')
-                ]);
-                products = await menuRes.json();
-                categories = catRes.ok ? await catRes.json() : [];
-                renderCategoryTabs();
-                renderMenu();
-            } catch (e) {
-                document.getElementById('menu-container').innerHTML = "<div class='alert alert-danger m-3'>Error al cargar el menú.</div>";
-            }
+          Object.values(grouped).forEach((group) => {
+            container.innerHTML += `<div class="cat-section-title">🏷️ ${group.name}</div>`;
+            group.items.forEach(
+              (p) => (container.innerHTML += productCardHtml(p)),
+            );
+          });
+          if (uncategorized.length > 0) {
+            container.innerHTML += `<div class="cat-section-title">🏷️ Otros</div>`;
+            uncategorized.forEach(
+              (p) => (container.innerHTML += productCardHtml(p)),
+            );
+          }
+        } else {
+          filtered.forEach((p) => (container.innerHTML += productCardHtml(p)));
         }
+      }
 
-        let cart = [];
-
-        function renderCategoryTabs() {
-            const bar = document.getElementById('cat-tabs-bar');
-            if(!categories || categories.length === 0) return;
-            bar.style.display = 'flex';
-
-            let html = `<button class="cat-tab active" onclick="filterCategory('all', this)">🍽️ Todos</button>`;
-            categories.forEach(c => {
-                html += `<button class="cat-tab" onclick="filterCategory(${c.id}, this)">${c.name}</button>`;
-            });
-            bar.innerHTML = html;
-        }
-
-        function filterCategory(catId, btn) {
-            activeCategory = catId;
-            document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
-            btn.classList.add('active');
-            renderMenu();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function renderMenu() {
-            const container = document.getElementById('menu-container');
-            container.innerHTML = '';
-            
-            let filtered = activeCategory === 'all'
-                ? products
-                : products.filter(p => p.category_id === activeCategory);
-
-            if(filtered.length === 0) {
-                container.innerHTML = "<div class='text-center mt-5 text-muted'>No hay productos en esta categoría.</div>";
-                return;
-            }
-
-            if(activeCategory === 'all' && categories.length > 0) {
-                // Group by category
-                const catMap = {};
-                categories.forEach(c => { catMap[c.id] = c.name; });
-                const grouped = {};
-                const uncategorized = [];
-                filtered.forEach(p => {
-                    if(p.category_id && catMap[p.category_id]) {
-                        if(!grouped[p.category_id]) grouped[p.category_id] = { name: catMap[p.category_id], items: [] };
-                        grouped[p.category_id].items.push(p);
-                    } else {
-                        uncategorized.push(p);
-                    }
-                });
-
-                Object.values(grouped).forEach(group => {
-                    container.innerHTML += `<div class="cat-section-title">🏷️ ${group.name}</div>`;
-                    group.items.forEach(p => container.innerHTML += productCardHtml(p));
-                });
-                if(uncategorized.length > 0) {
-                    container.innerHTML += `<div class="cat-section-title">🏷️ Otros</div>`;
-                    uncategorized.forEach(p => container.innerHTML += productCardHtml(p));
-                }
-            } else {
-                filtered.forEach(p => container.innerHTML += productCardHtml(p));
-            }
-        }
-
-        function productCardHtml(p) {
-            const imgHtml = p.image_url 
-                ? `<img src="${p.image_url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin-right: 15px;" alt="${p.name}">`
-                : `<div style="width: 80px; height: 80px; border-radius: 8px; margin-right: 15px; background: #eee; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 24px;">🍴</div>`;
-            return `
+      function productCardHtml(p) {
+        const imgHtml = p.image_url
+          ? `<img src="${p.image_url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin-right: 15px;" alt="${p.name}">`
+          : `<div style="width: 80px; height: 80px; border-radius: 8px; margin-right: 15px; background: #eee; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 24px;">🍴</div>`;
+        return `
                 <div class="product-card">
                     ${imgHtml}
                     <div class="product-info">
                         <div class="product-name">${p.name}</div>
-                        <div class="product-price">$${p.price_cop.toLocaleString('es-CO')}</div>
+                        <div class="product-price">$${p.price_cop.toLocaleString("es-CO")}</div>
                     </div>
                     <div class="qty-controls">
                         <button class="qty-btn text-white bg-success" style="width:100%; border-radius:8px; padding:5px 15px;" onclick="openModifierModal(${p.id})">Agregar</button>
                     </div>
                 </div>
             `;
-        }
+      }
 
-        let currentAddId = null;
-        function openModifierModal(id) {
-            currentAddId = id;
-            const p = products.find(x => x.id === id);
-            document.getElementById('mod-title').innerText = p.name;
-            document.getElementById('mod-notes').value = '';
-            document.getElementById('mod-qty').innerText = '1';
-            document.getElementById('modifier-modal').classList.add('active');
-        }
-        function closeModifierModal() {
-            document.getElementById('modifier-modal').classList.remove('active');
-        }
-        function modQty(delta) {
-            let q = parseInt(document.getElementById('mod-qty').innerText) + delta;
-            if(q < 1) q = 1;
-            document.getElementById('mod-qty').innerText = q;
-        }
-        function confirmAdd() {
-            const qty = parseInt(document.getElementById('mod-qty').innerText);
-            const notes = document.getElementById('mod-notes').value;
-            const p = products.find(x => x.id === currentAddId);
-            
-            cart.push({ id: p.id, name: p.name, price_cop: p.price_cop, qty: qty, notes: notes });
-            closeModifierModal();
-            updateCartUI();
-        }
-        function removeItem(index) {
-            cart.splice(index, 1);
-            updateCartUI();
-            if(document.getElementById('cart-modal').classList.contains('active')) {
-                openCart();
-            }
-        }
+      let currentAddId = null;
+      function openModifierModal(id) {
+        currentAddId = id;
+        const p = products.find((x) => x.id === id);
+        document.getElementById("mod-title").innerText = p.name;
+        document.getElementById("mod-notes").value = "";
+        document.getElementById("mod-qty").innerText = "1";
+        document.getElementById("modifier-modal").classList.add("active");
+      }
+      function closeModifierModal() {
+        document.getElementById("modifier-modal").classList.remove("active");
+      }
+      function modQty(delta) {
+        let q = parseInt(document.getElementById("mod-qty").innerText) + delta;
+        if (q < 1) q = 1;
+        document.getElementById("mod-qty").innerText = q;
+      }
+      function confirmAdd() {
+        const qty = parseInt(document.getElementById("mod-qty").innerText);
+        const notes = document.getElementById("mod-notes").value;
+        const p = products.find((x) => x.id === currentAddId);
 
-        function updateCartUI() {
-            let count = 0;
-            let total = 0;
-            
-            cart.forEach(item => {
-                count += item.qty;
-                total += item.price_cop * item.qty;
-            });
-
-            const bar = document.getElementById('cart-bar');
-            if (count > 0) {
-                bar.classList.add('active');
-                document.getElementById('cart-count').innerText = count + ' producto' + (count > 1 ? 's' : '');
-                document.getElementById('cart-total').innerText = '$' + total.toLocaleString('es-CO');
-                document.getElementById('modal-total').innerText = '$' + total.toLocaleString('es-CO');
-            } else {
-                bar.classList.remove('active');
-            }
+        cart.push({
+          id: p.id,
+          name: p.name,
+          price_cop: p.price_cop,
+          qty: qty,
+          notes: notes,
+        });
+        closeModifierModal();
+        updateCartUI();
+      }
+      function removeItem(index) {
+        cart.splice(index, 1);
+        updateCartUI();
+        if (
+          document.getElementById("cart-modal").classList.contains("active")
+        ) {
+          openCart();
         }
+      }
 
-        function openCart() {
-            const container = document.getElementById('cart-items');
-            container.innerHTML = '';
-            
-            cart.forEach((item, index) => {
-                const notesHtml = item.notes ? `<div class="text-danger" style="font-size:0.85em">* ${item.notes}</div>` : '';
-                container.innerHTML += `
+      function updateCartUI() {
+        let count = 0;
+        let total = 0;
+
+        cart.forEach((item) => {
+          count += item.qty;
+          total += item.price_cop * item.qty;
+        });
+
+        const bar = document.getElementById("cart-bar");
+        if (count > 0) {
+          bar.classList.add("active");
+          document.getElementById("cart-count").innerText =
+            count + " producto" + (count > 1 ? "s" : "");
+          document.getElementById("cart-total").innerText =
+            "$" + total.toLocaleString("es-CO");
+          document.getElementById("modal-total").innerText =
+            "$" + total.toLocaleString("es-CO");
+        } else {
+          bar.classList.remove("active");
+        }
+      }
+
+      function openCart() {
+        const container = document.getElementById("cart-items");
+        container.innerHTML = "";
+
+        cart.forEach((item, index) => {
+          const notesHtml = item.notes
+            ? `<div class="text-danger" style="font-size:0.85em">* ${item.notes}</div>`
+            : "";
+          container.innerHTML += `
                     <div class="cart-item">
                         <div>
                             <div class="fw-bold">${item.name} <span class="text-danger" style="cursor:pointer; margin-left:10px" onclick="removeItem(${index})"><i class="fas fa-trash"></i></span></div>
                             ${notesHtml}
-                            <div class="text-muted">${item.qty} x $${item.price_cop.toLocaleString('es-CO')}</div>
+                            <div class="text-muted">${item.qty} x $${item.price_cop.toLocaleString("es-CO")}</div>
                         </div>
                         <div class="fw-bold text-success">
-                            $${(item.price_cop * item.qty).toLocaleString('es-CO')}
+                            $${(item.price_cop * item.qty).toLocaleString("es-CO")}
                         </div>
                     </div>
                 `;
-            });
-            
-            document.getElementById('cart-modal').classList.add('active');
+        });
+
+        document.getElementById("cart-modal").classList.add("active");
+      }
+
+      function closeCart() {
+        document.getElementById("cart-modal").classList.remove("active");
+      }
+
+      async function submitOrder() {
+        let deliveryPayload = {};
+        if (isDomicilio) {
+          const name = document.getElementById("del-name").value.trim();
+          const phone = document.getElementById("del-phone").value.trim();
+          const address = document.getElementById("del-address").value.trim();
+          if (!name || !phone || !address) {
+            alert("Por favor completa todos los campos de envío.");
+            return;
+          }
+          deliveryPayload = {
+            is_delivery: true,
+            customer_name: name,
+            customer_phone: phone,
+            delivery_address: address,
+          };
         }
 
-        function closeCart() {
-            document.getElementById('cart-modal').classList.remove('active');
-        }
+        const btn = document.getElementById("submit-btn");
+        btn.disabled = true;
+        btn.innerText = "Enviando...";
 
-        async function submitOrder() {
-            let deliveryPayload = {};
-            if (isDomicilio) {
-                const name = document.getElementById('del-name').value.trim();
-                const phone = document.getElementById('del-phone').value.trim();
-                const address = document.getElementById('del-address').value.trim();
-                if(!name || !phone || !address) {
-                    alert("Por favor completa todos los campos de envío.");
-                    return;
-                }
-                deliveryPayload = {
-                    is_delivery: true,
-                    customer_name: name,
-                    customer_phone: phone,
-                    delivery_address: address
-                };
-            }
+        const items = cart.map((i) => ({
+          product_id: i.id,
+          qty: i.qty,
+          notes: i.notes,
+        }));
+        const isDonation =
+          !isDomicilio && tableId.toString().toLowerCase().includes("donaci");
 
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true;
-            btn.innerText = "Enviando...";
-            
-            const items = cart.map(i => ({ product_id: i.id, qty: i.qty, notes: i.notes }));
-            const isDonation = (!isDomicilio && tableId.toString().toLowerCase().includes("donaci"));
+        try {
+          const res = await fetch("/api/customer/order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              table_id: isDonation || isDomicilio ? -1 : parseInt(tableId),
+              items: items,
+              is_donation: isDonation,
+              ...deliveryPayload,
+            }),
+          });
 
-            try {
-                const res = await fetch('/api/customer/order', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        table_id: (isDonation || isDomicilio) ? -1 : parseInt(tableId), 
-                        items: items, 
-                        is_donation: isDonation,
-                        ...deliveryPayload
-                    })
-                });
-                
-                if (res.ok) {
-                    document.getElementById('cart-items').innerHTML = `
+          if (res.ok) {
+            document.getElementById("cart-items").innerHTML = `
                         <div class="text-center mt-5">
                             <h1 style="font-size: 60px;">✅</h1>
                             <h3 class="fw-bold text-success mt-3">¡Pedido Enviado!</h3>
@@ -385,120 +653,220 @@
                             <button class="btn btn-outline-dark mt-4" onclick="location.reload()">Hacer otro pedido</button>
                         </div>
                     `;
-                    document.querySelector('.cart-modal-footer').style.display = 'none';
-                } else {
-                    alert("Hubo un error al enviar tu pedido. Acércate a la caja.");
-                    btn.disabled = false;
-                    btn.innerText = "Enviar a Cocina";
-                }
-            } catch (e) {
-                alert("Error de conexión.");
-                btn.disabled = false;
-                btn.innerText = "Enviar a Cocina";
-            }
+            document.querySelector(".cart-modal-footer").style.display = "none";
+          } else {
+            alert("Hubo un error al enviar tu pedido. Acércate a la caja.");
+            btn.disabled = false;
+            btn.innerText = "Enviar a Cocina";
+          }
+        } catch (e) {
+          alert("Error de conexión.");
+          btn.disabled = false;
+          btn.innerText = "Enviar a Cocina";
         }
+      }
 
-        window.onload = init;
-    
-    let currentOnlineOrderId = null;
+      window.onload = init;
 
-    async function submitReservation() {
-        const name = document.getElementById('res-name').value;
-        const phone = document.getElementById('res-phone').value;
-        const rdate = document.getElementById('res-date').value;
-        const rtime = document.getElementById('res-time').value;
-        const guests = document.getElementById('res-guests').value;
-        if(!name || !rdate || !rtime) return alert("Completa los campos.");
-        
+      let currentOnlineOrderId = null;
+
+      async function submitReservation() {
+        const name = document.getElementById("res-name").value;
+        const phone = document.getElementById("res-phone").value;
+        const rdate = document.getElementById("res-date").value;
+        const rtime = document.getElementById("res-time").value;
+        const guests = document.getElementById("res-guests").value;
+        if (!name || !rdate || !rtime) return alert("Completa los campos.");
+
         try {
-            const res = await fetch('/api/reservations', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({name, phone, res_date: rdate, res_time: rtime, guests: parseInt(guests)})
-            });
-            if(res.ok) {
-                alert("Reserva confirmada. ¡Te esperamos!");
-                document.getElementById('res-modal').style.display = 'none';
-            }
-        } catch(e) { alert("Error de red"); }
-    }
-
-    async function confirmOnlinePayment() {
-        if(!currentOnlineOrderId) return;
-        try {
-            const res = await fetch('/api/customer/pay/' + currentOnlineOrderId, { method: 'POST' });
-            if(res.ok) {
-                alert("¡Pago exitoso! Hemos recibido tu pago y tu pedido va en camino a prepararse.");
-                document.getElementById('pay-modal').style.display = 'none';
-            }
-        } catch(e) {
-            alert("Error de conexión");
+          const res = await fetch("/api/reservations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name,
+              phone,
+              res_date: rdate,
+              res_time: rtime,
+              guests: parseInt(guests),
+            }),
+          });
+          if (res.ok) {
+            alert("Reserva confirmada. ¡Te esperamos!");
+            document.getElementById("res-modal").style.display = "none";
+          }
+        } catch (e) {
+          alert("Error de red");
         }
-    }
+      }
 
-</script>
+      async function confirmOnlinePayment() {
+        if (!currentOnlineOrderId) return;
+        try {
+          const res = await fetch("/api/customer/pay/" + currentOnlineOrderId, {
+            method: "POST",
+          });
+          if (res.ok) {
+            alert(
+              "¡Pago exitoso! Hemos recibido tu pago y tu pedido va en camino a prepararse.",
+            );
+            document.getElementById("pay-modal").style.display = "none";
+          }
+        } catch (e) {
+          alert("Error de conexión");
+        }
+      }
+    </script>
 
-<!-- Modal Reserva -->
-<div class="modal" id="res-modal" tabindex="-1" style="z-index:3000; background:rgba(0,0,0,0.5);">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header bg-dark text-white border-0">
-        <h5 class="modal-title">📅 Reservar Mesa</h5>
-        <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('res-modal').style.display='none'"></button>
-      </div>
-      <div class="modal-body p-4">
-        <div class="mb-3">
-            <label class="form-label text-muted small fw-bold text-uppercase">Nombre a quien reserva</label>
-            <input type="text" id="res-name" class="form-control form-control-lg border-2">
-        </div>
-        <div class="mb-3">
-            <label class="form-label text-muted small fw-bold text-uppercase">Celular</label>
-            <input type="text" id="res-phone" class="form-control form-control-lg border-2">
-        </div>
-        <div class="row mb-3">
-            <div class="col-6">
-                <label class="form-label text-muted small fw-bold text-uppercase">Fecha</label>
-                <input type="date" id="res-date" class="form-control border-2">
+    <!-- Modal Reserva -->
+    <div
+      class="modal"
+      id="res-modal"
+      tabindex="-1"
+      style="z-index: 3000; background: rgba(0, 0, 0, 0.5)"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-dark text-white border-0">
+            <h5 class="modal-title">📅 Reservar Mesa</h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              onclick="
+                document.getElementById('res-modal').style.display = 'none'
+              "
+            ></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="mb-3">
+              <label class="form-label text-muted small fw-bold text-uppercase"
+                >Nombre a quien reserva</label
+              >
+              <input
+                type="text"
+                id="res-name"
+                class="form-control form-control-lg border-2"
+              />
             </div>
-            <div class="col-6">
-                <label class="form-label text-muted small fw-bold text-uppercase">Hora</label>
-                <input type="time" id="res-time" class="form-control border-2">
+            <div class="mb-3">
+              <label class="form-label text-muted small fw-bold text-uppercase"
+                >Celular</label
+              >
+              <input
+                type="text"
+                id="res-phone"
+                class="form-control form-control-lg border-2"
+              />
             </div>
+            <div class="row mb-3">
+              <div class="col-6">
+                <label
+                  class="form-label text-muted small fw-bold text-uppercase"
+                  >Fecha</label
+                >
+                <input
+                  type="date"
+                  id="res-date"
+                  class="form-control border-2"
+                />
+              </div>
+              <div class="col-6">
+                <label
+                  class="form-label text-muted small fw-bold text-uppercase"
+                  >Hora</label
+                >
+                <input
+                  type="time"
+                  id="res-time"
+                  class="form-control border-2"
+                />
+              </div>
+            </div>
+            <div class="mb-4">
+              <label class="form-label text-muted small fw-bold text-uppercase"
+                >Nº de Personas</label
+              >
+              <input
+                type="number"
+                id="res-guests"
+                class="form-control border-2"
+                value="2"
+                min="1"
+              />
+            </div>
+            <button
+              class="btn btn-primary btn-lg w-100 fw-bold"
+              onclick="submitReservation()"
+            >
+              Confirmar Reserva
+            </button>
+          </div>
         </div>
-        <div class="mb-4">
-            <label class="form-label text-muted small fw-bold text-uppercase">Nº de Personas</label>
-            <input type="number" id="res-guests" class="form-control border-2" value="2" min="1">
-        </div>
-        <button class="btn btn-primary btn-lg w-100 fw-bold" onclick="submitReservation()">Confirmar Reserva</button>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- Modal Pagos (Simulador Wompi/MercadoPago) -->
-<div class="modal" id="pay-modal" tabindex="-1" style="z-index:3000; background:rgba(0,0,0,0.7);">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0" style="border-radius: 1rem; overflow:hidden;">
-      <div class="modal-header text-white" style="background: linear-gradient(135deg, #009ee3 0%, #007bc0 100%);">
-        <h5 class="modal-title fw-bold">MercadoPago / Wompi (Sandbox)</h5>
-        <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('pay-modal').style.display='none'"></button>
-      </div>
-      <div class="modal-body p-4 text-center">
-        <h3 class="mb-4 fw-bold">Total a pagar: <span id="pay-total-amount" class="text-primary"></span></h3>
-        <p class="text-muted small mb-4">Esta es una simulación de la pasarela de pagos.</p>
-        
-        <div class="mb-3 text-start">
-            <label class="form-label fw-bold">Número de Tarjeta</label>
-            <input type="text" class="form-control form-control-lg text-center" value="4111 1111 1111 1111" readonly>
+    <!-- Modal Pagos (Simulador Wompi/MercadoPago) -->
+    <div
+      class="modal"
+      id="pay-modal"
+      tabindex="-1"
+      style="z-index: 3000; background: rgba(0, 0, 0, 0.7)"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div
+          class="modal-content border-0"
+          style="border-radius: 1rem; overflow: hidden"
+        >
+          <div
+            class="modal-header text-white"
+            style="
+              background: linear-gradient(135deg, #009ee3 0%, #007bc0 100%);
+            "
+          >
+            <h5 class="modal-title fw-bold">MercadoPago / Wompi (Sandbox)</h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              onclick="
+                document.getElementById('pay-modal').style.display = 'none'
+              "
+            ></button>
+          </div>
+          <div class="modal-body p-4 text-center">
+            <h3 class="mb-4 fw-bold">
+              Total a pagar:
+              <span id="pay-total-amount" class="text-primary"></span>
+            </h3>
+            <p class="text-muted small mb-4">
+              Esta es una simulación de la pasarela de pagos.
+            </p>
+
+            <div class="mb-3 text-start">
+              <label class="form-label fw-bold">Número de Tarjeta</label>
+              <input
+                type="text"
+                class="form-control form-control-lg text-center"
+                value="4111 1111 1111 1111"
+                readonly
+              />
+            </div>
+
+            <button
+              class="btn btn-success btn-lg w-100 fw-bold shadow-sm"
+              onclick="confirmOnlinePayment()"
+            >
+              Pagar con Tarjeta (Test)
+            </button>
+            <button
+              class="btn btn-outline-secondary w-100 mt-2 fw-bold"
+              onclick="confirmOnlinePayment()"
+            >
+              Pagar con PSE / Nequi (Test)
+            </button>
+          </div>
         </div>
-        
-        <button class="btn btn-success btn-lg w-100 fw-bold shadow-sm" onclick="confirmOnlinePayment()">Pagar con Tarjeta (Test)</button>
-        <button class="btn btn-outline-secondary w-100 mt-2 fw-bold" onclick="confirmOnlinePayment()">Pagar con PSE / Nequi (Test)</button>
       </div>
     </div>
-  </div>
-</div>
 
-<script src="/core.js"></script>
-</body>
+    <script src="/core.js"></script>
+  </body>
 </html>

@@ -1,104 +1,146 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Ticket de Venta</title>
     <style>
-        @page { margin: 0; }
-        body {
-            font-family: 'Courier New', Courier, monospace;
-            width: 80mm; /* Standard thermal printer width */
-            margin: 0;
-            padding: 10px;
-            font-size: 12px;
-            line-height: 1.2;
-            color: #000;
-        }
-        h1, h2, h3, p { margin: 0; padding: 0; text-align: center; }
-        .text-left { text-align: left; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .bold { font-weight: bold; }
-        .divider { border-bottom: 1px dashed #000; margin: 5px 0; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 2px 0; }
-        th { border-bottom: 1px solid #000; }
-        .item-name { width: 50%; }
-        .item-qty { width: 15%; text-align: center; }
-        .item-price { width: 35%; text-align: right; }
+      @page {
+        margin: 0;
+      }
+      body {
+        font-family: "Courier New", Courier, monospace;
+        width: 80mm; /* Standard thermal printer width */
+        margin: 0;
+        padding: 10px;
+        font-size: 12px;
+        line-height: 1.2;
+        color: #000;
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+        padding: 0;
+        text-align: center;
+      }
+      .text-left {
+        text-align: left;
+      }
+      .text-right {
+        text-align: right;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .bold {
+        font-weight: bold;
+      }
+      .divider {
+        border-bottom: 1px dashed #000;
+        margin: 5px 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 2px 0;
+      }
+      th {
+        border-bottom: 1px solid #000;
+      }
+      .item-name {
+        width: 50%;
+      }
+      .item-qty {
+        width: 15%;
+        text-align: center;
+      }
+      .item-price {
+        width: 35%;
+        text-align: right;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="ticket-content">
-        <h2 id="business-name">Taquería Pro</h2>
-        <p>Ticket de Venta</p>
-        <p>Fecha: <span id="t-date"></span></p>
-        <p>Orden #: <span id="t-order" class="bold"></span></p>
-        <div class="divider"></div>
-        <table>
-            <thead>
-                <tr>
-                    <th class="text-left item-name">Cant x Prod</th>
-                    <th class="text-right item-price">Monto</th>
-                </tr>
-            </thead>
-            <tbody id="t-items">
-                <!-- Items -->
-            </tbody>
-        </table>
-        <div class="divider"></div>
-        <p class="text-right bold">TOTAL: <span id="t-total"></span></p>
-        <div class="divider"></div>
-        <p class="text-center mt-2">¡Gracias por su compra!</p>
+      <h2 id="business-name">Taquería Pro</h2>
+      <p>Ticket de Venta</p>
+      <p>Fecha: <span id="t-date"></span></p>
+      <p>Orden #: <span id="t-order" class="bold"></span></p>
+      <div class="divider"></div>
+      <table>
+        <thead>
+          <tr>
+            <th class="text-left item-name">Cant x Prod</th>
+            <th class="text-right item-price">Monto</th>
+          </tr>
+        </thead>
+        <tbody id="t-items">
+          <!-- Items -->
+        </tbody>
+      </table>
+      <div class="divider"></div>
+      <p class="text-right bold">TOTAL: <span id="t-total"></span></p>
+      <div class="divider"></div>
+      <p class="text-center mt-2">¡Gracias por su compra!</p>
     </div>
 
     <script src="/core.js"></script>
     <script>
-        async function loadTicket() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const orderId = urlParams.get('order_id');
-            if(!orderId) return;
+      async function loadTicket() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get("order_id");
+        if (!orderId) return;
 
-            document.getElementById('t-date').innerText = new Date().toLocaleString();
-            document.getElementById('t-order').innerText = orderId;
+        document.getElementById("t-date").innerText =
+          new Date().toLocaleString();
+        document.getElementById("t-order").innerText = orderId;
 
-            try {
-                // Fetch Branding
-                const bRes = await fetch('/branding');
-                if(bRes.ok) {
-                    const b = await bRes.json();
-                    if(b.business_name) document.getElementById('business-name').innerText = b.business_name;
-                }
+        try {
+          // Fetch Branding
+          const bRes = await fetch("/branding");
+          if (bRes.ok) {
+            const b = await bRes.json();
+            if (b.business_name)
+              document.getElementById("business-name").innerText =
+                b.business_name;
+          }
 
-                // Fetch Order details
-                // Since this is opened from cashier, we assume the cashier fetched the order.
-                // Alternatively, we fetch it here.
-                const res = await fetch(`/api/orders/${orderId}`, {headers: AUTH()});
-                if(res.ok) {
-                    const order = await res.json();
-                    document.getElementById('t-total').innerText = '$' + (order.total_cop || 0).toLocaleString('es-CO');
-                    
-                    const tbody = document.getElementById('t-items');
-                    order.items.forEach(item => {
-                        tbody.innerHTML += `
+          // Fetch Order details
+          // Since this is opened from cashier, we assume the cashier fetched the order.
+          // Alternatively, we fetch it here.
+          const res = await fetch(`/api/orders/${orderId}`, {
+            headers: AUTH(),
+          });
+          if (res.ok) {
+            const order = await res.json();
+            document.getElementById("t-total").innerText =
+              "$" + (order.total_cop || 0).toLocaleString("es-CO");
+
+            const tbody = document.getElementById("t-items");
+            order.items.forEach((item) => {
+              tbody.innerHTML += `
                             <tr>
                                 <td class="text-left item-name">${item.qty}x ${item.product_name}</td>
-                                <td class="text-right item-price">$${(item.price_cop * item.qty).toLocaleString('es-CO')}</td>
+                                <td class="text-right item-price">$${(item.price_cop * item.qty).toLocaleString("es-CO")}</td>
                             </tr>
                         `;
-                    });
+            });
 
-                    // Auto Print
-                    setTimeout(() => {
-                        window.print();
-                        setTimeout(() => window.close(), 500);
-                    }, 500);
-                }
-            } catch(e) {
-                console.error("Error loading ticket", e);
-            }
+            // Auto Print
+            setTimeout(() => {
+              window.print();
+              setTimeout(() => window.close(), 500);
+            }, 500);
+          }
+        } catch (e) {
+          console.error("Error loading ticket", e);
         }
-        window.onload = loadTicket;
+      }
+      window.onload = loadTicket;
     </script>
-</body>
+  </body>
 </html>

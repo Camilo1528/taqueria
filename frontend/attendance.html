@@ -1,103 +1,167 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Reloj Checador - Taquería Pro</title>
-    <link href="libs/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="libs/bootstrap.min.css" rel="stylesheet" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
     <style>
-        body { background-color: #121212; color: #fff; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; }
-        .card-reader { background-color: #1e1e1e; border-radius: 20px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; max-width: 500px; width: 100%; }
-        .scanner-input { width: 100%; padding: 15px; font-size: 24px; text-align: center; border-radius: 10px; border: 2px solid #333; background-color: #121212; color: #fff; margin-bottom: 10px; letter-spacing: 5px; }
-        .icon { font-size: 60px; color: #0d6efd; margin-bottom: 20px; }
-        .pulse { animation: pulse 2s infinite; }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.7; }
-            100% { transform: scale(1); opacity: 1; }
+      body {
+        background-color: #121212;
+        color: #fff;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Inter", sans-serif;
+      }
+      .card-reader {
+        background-color: #1e1e1e;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        text-align: center;
+        max-width: 500px;
+        width: 100%;
+      }
+      .scanner-input {
+        width: 100%;
+        padding: 15px;
+        font-size: 24px;
+        text-align: center;
+        border-radius: 10px;
+        border: 2px solid #333;
+        background-color: #121212;
+        color: #fff;
+        margin-bottom: 10px;
+        letter-spacing: 5px;
+      }
+      .icon {
+        font-size: 60px;
+        color: #0d6efd;
+        margin-bottom: 20px;
+      }
+      .pulse {
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+          opacity: 1;
         }
+        50% {
+          transform: scale(1.1);
+          opacity: 0.7;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
     </style>
-  <link rel="manifest" href="/manifest.json">
-</head>
-<body>
+    <link rel="manifest" href="/manifest.json" />
+  </head>
+  <body>
+    <div class="card-reader">
+      <div class="icon pulse">📇</div>
+      <h2 class="fw-bold mb-3">Control de Asistencia</h2>
+      <p class="text-muted mb-4" id="subtitle-text">
+        Pasa tu Código QR por el lector para registrar entrada o salida.
+      </p>
 
-<div class="card-reader">
-    <div class="icon pulse">📇</div>
-    <h2 class="fw-bold mb-3">Control de Asistencia</h2>
-    <p class="text-muted mb-4" id="subtitle-text">Pasa tu Código QR por el lector para registrar entrada o salida.</p>
-    
-    <div id="status-message" class="alert d-none"></div>
-    
-    <div id="input-container">
-        <input type="password" id="scanner" class="scanner-input" placeholder="Ingresa PIN..." autofocus autocomplete="off">
+      <div id="status-message" class="alert d-none"></div>
+
+      <div id="input-container">
+        <input
+          type="password"
+          id="scanner"
+          class="scanner-input"
+          placeholder="Ingresa PIN..."
+          autofocus
+          autocomplete="off"
+        />
+      </div>
     </div>
-</div>
 
-<script>
-    const scannerInput = document.getElementById('scanner');
-    const statusDiv = document.getElementById('status-message');
+    <script>
+      const scannerInput = document.getElementById("scanner");
+      const statusDiv = document.getElementById("status-message");
 
-    // Mantener el foco en el input oculto
-    document.addEventListener('click', () => scannerInput.focus());
-    setInterval(() => scannerInput.focus(), 1000);
+      // Mantener el foco en el input oculto
+      document.addEventListener("click", () => scannerInput.focus());
+      setInterval(() => scannerInput.focus(), 1000);
 
-    let lastScan = 0;
-    let hideTimeout;
+      let lastScan = 0;
+      let hideTimeout;
 
-    scannerInput.addEventListener('keypress', async (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const pin = scannerInput.value.trim();
-            scannerInput.value = '';
+      scannerInput.addEventListener("keypress", async (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const pin = scannerInput.value.trim();
+          scannerInput.value = "";
 
-            if(!pin) return;
-            
-            // Debounce
-            const now = Date.now();
-            if(now - lastScan < 2000) return;
-            lastScan = now;
+          if (!pin) return;
 
-            clearTimeout(hideTimeout);
-            
-            document.getElementById('input-container').classList.add('d-none');
-            document.getElementById('subtitle-text').classList.add('d-none');
+          // Debounce
+          const now = Date.now();
+          if (now - lastScan < 2000) return;
+          lastScan = now;
 
-            statusDiv.className = 'alert bg-warning text-dark p-4 rounded-3 shadow-lg';
-            statusDiv.innerText = "Procesando...";
-            statusDiv.classList.remove('d-none');
+          clearTimeout(hideTimeout);
 
-            try {
-                const res = await fetch('/api/attendance/log', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pin: pin })
-                });
-                
-                const data = await res.json();
-                
-                if (res.ok) {
-                    const action = data.type === 'in' ? 'Registro de Ingreso' : 'Registro de Salida';
-                    statusDiv.className = data.type === 'in' ? 'alert bg-success text-white p-4 rounded-3 shadow-lg' : 'alert bg-info text-white p-4 rounded-3 shadow-lg';
-                    statusDiv.innerHTML = `<h3 class="mb-2 fw-bold text-white">${action}</h3><h4 class="mb-2 text-white">${data.user}</h4><h5 class="text-white opacity-75"><i class="bi bi-clock-fill"></i> ${new Date().toLocaleTimeString('es-CO')}</h5>`;
-                } else {
-                    statusDiv.className = 'alert bg-danger text-white p-4 rounded-3 shadow-lg';
-                    statusDiv.innerText = "Error: " + data.detail;
-                }
-            } catch(e) {
-                statusDiv.className = 'alert bg-danger text-white p-4 rounded-3 shadow-lg';
-                statusDiv.innerText = "Error de conexión";
+          document.getElementById("input-container").classList.add("d-none");
+          document.getElementById("subtitle-text").classList.add("d-none");
+
+          statusDiv.className =
+            "alert bg-warning text-dark p-4 rounded-3 shadow-lg";
+          statusDiv.innerText = "Procesando...";
+          statusDiv.classList.remove("d-none");
+
+          try {
+            const res = await fetch("/api/attendance/log", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pin: pin }),
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+              const action =
+                data.type === "in"
+                  ? "Registro de Ingreso"
+                  : "Registro de Salida";
+              statusDiv.className =
+                data.type === "in"
+                  ? "alert bg-success text-white p-4 rounded-3 shadow-lg"
+                  : "alert bg-info text-white p-4 rounded-3 shadow-lg";
+              statusDiv.innerHTML = `<h3 class="mb-2 fw-bold text-white">${action}</h3><h4 class="mb-2 text-white">${data.user}</h4><h5 class="text-white opacity-75"><i class="bi bi-clock-fill"></i> ${new Date().toLocaleTimeString("es-CO")}</h5>`;
+            } else {
+              statusDiv.className =
+                "alert bg-danger text-white p-4 rounded-3 shadow-lg";
+              statusDiv.innerText = "Error: " + data.detail;
             }
-            
-            hideTimeout = setTimeout(() => {
-                statusDiv.classList.add('d-none');
-                document.getElementById('input-container').classList.remove('d-none');
-                document.getElementById('subtitle-text').classList.remove('d-none');
-                scannerInput.focus();
-            }, 5000);
+          } catch (e) {
+            statusDiv.className =
+              "alert bg-danger text-white p-4 rounded-3 shadow-lg";
+            statusDiv.innerText = "Error de conexión";
+          }
+
+          hideTimeout = setTimeout(() => {
+            statusDiv.classList.add("d-none");
+            document
+              .getElementById("input-container")
+              .classList.remove("d-none");
+            document.getElementById("subtitle-text").classList.remove("d-none");
+            scannerInput.focus();
+          }, 5000);
         }
-    });
-</script>
-<script src="/core.js"></script>
-</body>
+      });
+    </script>
+    <script src="/core.js"></script>
+  </body>
 </html>

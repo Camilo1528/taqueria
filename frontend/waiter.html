@@ -1,65 +1,92 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Meseros - Taquería Pro</title>
-    <link href="libs/bootstrap.min.css" rel="stylesheet">
+    <link href="libs/bootstrap.min.css" rel="stylesheet" />
     <style>
-        body { background-color: #f3f4f6; }
-        .table-btn { width: 100%; height: 120px; font-size: 24px; font-weight: bold; border-radius: 15px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s; }
-        .table-btn:active { transform: scale(0.95); }
-        .table-open { background-color: #ef4444; color: white; }
-        .table-free { background-color: #10b981; color: white; }
+      body {
+        background-color: #f3f4f6;
+      }
+      .table-btn {
+        width: 100%;
+        height: 120px;
+        font-size: 24px;
+        font-weight: bold;
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+      }
+      .table-btn:active {
+        transform: scale(0.95);
+      }
+      .table-open {
+        background-color: #ef4444;
+        color: white;
+      }
+      .table-free {
+        background-color: #10b981;
+        color: white;
+      }
     </style>
-  <link rel="manifest" href="/manifest.json">
-</head>
-<body>
-<div class="container py-4">
-    <h1 class="text-center mb-4 fw-bold text-dark" id="waiter-title">Mapa de Mesas</h1>
-    <div class="row g-4" id="map-container">
+    <link rel="manifest" href="/manifest.json" />
+  </head>
+  <body>
+    <div class="container py-4">
+      <h1 class="text-center mb-4 fw-bold text-dark" id="waiter-title">
+        Mapa de Mesas
+      </h1>
+      <div class="row g-4" id="map-container">
         <!-- JS inyecta mesas -->
+      </div>
     </div>
-</div>
-<script>
-    const token = localStorage.getItem('token');
-    if (!token) window.location.href = 'login.html';
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "login.html";
 
-    fetch('/branding').then(r=>r.json()).then(d=>{
-        let content = (d.business_name || "Mi Restaurante") + " - Mapa";
-        if (d.logo_url) {
-            content = `<img src="${d.logo_url}" style="height: 40px; margin-right: 10px; object-fit: contain; border-radius: 4px;">` + content;
-        }
-        document.getElementById('waiter-title').innerHTML = content;
-    });
+      fetch("/branding")
+        .then((r) => r.json())
+        .then((d) => {
+          let content = (d.business_name || "Mi Restaurante") + " - Mapa";
+          if (d.logo_url) {
+            content =
+              `<img src="${d.logo_url}" style="height: 40px; margin-right: 10px; object-fit: contain; border-radius: 4px;">` +
+              content;
+          }
+          document.getElementById("waiter-title").innerHTML = content;
+        });
 
-    async function loadTables() {
-        const res = await fetch('/tables/status', { headers: { 'Authorization': 'Bearer ' + token } }); 
-        if(!res.ok) return;
+      async function loadTables() {
+        const res = await fetch("/tables/status", {
+          headers: { Authorization: "Bearer " + token },
+        });
+        if (!res.ok) return;
         const tablesData = await res.json();
-        
-        let html = '';
-        for(let i=1; i<=12; i++) { 
-            const table = tablesData.find(t => t.name === "Mesa " + i);
-            const isOpen = table ? table.current_order_id !== null : false;
-            const cls = isOpen ? 'table-open' : 'table-free';
-            const status = isOpen ? 'Ocupada' : 'Libre';
-            html += `<div class="col-4 col-md-3">
+
+        let html = "";
+        for (let i = 1; i <= 12; i++) {
+          const table = tablesData.find((t) => t.name === "Mesa " + i);
+          const isOpen = table ? table.current_order_id !== null : false;
+          const cls = isOpen ? "table-open" : "table-free";
+          const status = isOpen ? "Ocupada" : "Libre";
+          html += `<div class="col-4 col-md-3">
                 <button class="table-btn ${cls}" onclick="takeOrder(${i})">
                     Mesa ${i}<br><span class="fs-6 fw-normal">${status}</span>
                 </button>
             </div>`;
         }
-        document.getElementById('map-container').innerHTML = html;
-    }
+        document.getElementById("map-container").innerHTML = html;
+      }
 
-    function takeOrder(table) {
+      function takeOrder(table) {
         window.location.href = `/customer.html?table=${table}`;
-    }
+      }
 
-    loadTables();
-    setInterval(loadTables, 5000);
-</script>
-<script src="/core.js"></script>
-</body>
+      loadTables();
+      setInterval(loadTables, 5000);
+    </script>
+    <script src="/core.js"></script>
+  </body>
 </html>
