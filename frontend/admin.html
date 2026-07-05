@@ -74,6 +74,7 @@
         font-weight: 800;
         background: linear-gradient(135deg, var(--primary), var(--accent));
         -webkit-background-clip: text;
+        background-clip: text;
         -webkit-text-fill-color: transparent;
       }
       .sidebar-logo small {
@@ -2199,6 +2200,7 @@
             document.getElementById("conf-dian").value = d.dian_api_key || "";
             document.getElementById("conf-whatsapp").value =
               d.whatsapp_number || "";
+        if(document.getElementById("conf-loyalty-enabled")) document.getElementById("conf-loyalty-enabled").checked = d.loyalty_enabled !== false;
             if (d.logo_url) {
               document.getElementById("conf-logo-url").value = d.logo_url;
               const preview = document.getElementById("logo-preview");
@@ -2651,6 +2653,7 @@
           price_cop: price,
           category_id: isNaN(cat) ? null : cat,
           image_url: imageUrl ? imageUrl : null,
+          is_reward: parseInt(document.getElementById("np-is-reward").value) || 0,
         };
         try {
           const r = await fetch("/api/products", {
@@ -2665,6 +2668,7 @@
             document.getElementById("np-price").value = "";
             document.getElementById("np-image").value = "";
             document.getElementById("np-cat").value = "";
+            document.getElementById("np-is-reward").value = "0";
             loadMenu();
           } else {
             const e = await r.json();
@@ -2675,11 +2679,12 @@
         }
       }
 
-      function editProduct(id, name, price, cat) {
+      function editProduct(id, name, price, cat, is_reward) {
         document.getElementById("ep-id").value = id;
         document.getElementById("ep-name").value = name;
         document.getElementById("ep-price").value = price;
         document.getElementById("ep-cat").value = cat || "";
+        document.getElementById("ep-is-reward").value = is_reward || 0;
         openModal("modal-edit-product");
       }
 
@@ -2697,6 +2702,7 @@
           name: name,
           price_cop: price,
           category_id: isNaN(cat) ? null : cat,
+          is_reward: parseInt(document.getElementById("ep-is-reward").value) || 0,
         };
         try {
           const r = await fetch("/api/products/" + id, {
@@ -3466,6 +3472,7 @@
           logo_url: document.getElementById("conf-logo-url").value,
           dian_api_key: document.getElementById("conf-dian").value,
           whatsapp_number: document.getElementById("conf-whatsapp").value,
+          loyalty_enabled: document.getElementById("conf-loyalty-enabled") ? document.getElementById("conf-loyalty-enabled").checked : true,
           ad_images: adImages,
         };
         try {

@@ -123,6 +123,7 @@
               });
               const result = await res.json();
               if (res.ok) {
+            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
                   alert(`Factura FEV generada (${result.invoice_number}) - CUFE: ${result.cufe}\n¡Ahora puedes proceder a cobrar la orden!`);
                   document.getElementById('dian-modal').style.display = 'none';
                   loadData(); // To refresh order notes
@@ -251,6 +252,7 @@
           });
           const result = await res.json();
           if (res.ok) {
+            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
             alert(
               `Factura FEV generada (${result.invoice_number}) - CUFE: ${result.cufe}\n¡Ahora puedes proceder a cobrar la orden!`,
             );
@@ -479,7 +481,7 @@
                   class="form-control"
                   id="customer-phone"
                   placeholder="Opcional"
-                  onblur="checkPoints()"
+                  oninput="checkPoints()"
                 />
                 <button
                   class="btn btn-outline-secondary"
@@ -1076,6 +1078,7 @@
             logoImg.style.display = "block";
           }
           numTables = parseInt(bData.num_tables) || 6;
+          if (bData.loyalty_enabled === false) { if(document.getElementById("loyalty-ui-container")) document.getElementById("loyalty-ui-container").style.display = "none"; }
 
           // Cargar Órdenes (con cache offline)
           const authHeaders = { Authorization: "Bearer " + token };
@@ -1126,6 +1129,7 @@
           body: JSON.stringify({ base_cash: baseCash }),
         });
         if (res.ok) {
+            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
           document.getElementById("shift-open-modal").style.display = "none";
           loadData();
         } else {
@@ -1250,28 +1254,47 @@
 
       let currentCustomerPoints = 0;
 
+      let availableRewards = [];
       async function checkPoints() {
-        const phone = document.getElementById("customer-phone").value;
+        const cedula = document.getElementById("customer-phone").value.trim();
         currentCustomerPoints = 0;
-        if (!phone) {
+        if (!cedula) {
           document.getElementById("loyalty-info").innerHTML = "";
           return;
         }
         try {
           const token = localStorage.getItem("token");
-          const res = await fetch("/api/customers/" + phone, {
+          const res = await fetch("/api/loyalty/" + cedula, {
             headers: { Authorization: "Bearer " + token },
           });
           const data = await res.json();
-          if (data.points > 0) {
+          if (data.points >= 10) {
+            currentCustomerPoints = data.points;
+            
+            // fetch rewards
+            const rRes = await fetch("/api/loyalty/rewards", { headers: { Authorization: "Bearer " + token }});
+            availableRewards = await rRes.json();
+            
+            let rewardOptions = availableRewards.map(r => `<option value="${r.id}">${r.name}</option>`).join("");
+            
+            document.getElementById("loyalty-info").innerHTML = `
+                    <div class="alert alert-info py-2 my-2" style="font-size:14px;">
+                        <strong>🎉 ¡Cliente Fidelizado!</strong> Tiene ${data.points} compras.<br>
+                        ¡Puede canjear una recompensa!
+                        <div class="input-group mt-2">
+                            <select id="reward-select" class="form-select form-select-sm">
+                                <option value="">-- No canjear --</option>
+                                ${rewardOptions}
+                            </select>
+                        </div>
+                    </div>
+                `;
+          } else if (data.points > 0) {
             currentCustomerPoints = data.points;
             document.getElementById("loyalty-info").innerHTML = `
-                    <div class="alert alert-info py-2 my-2">
-                        <strong>¡Cliente Fidelizado!</strong> Tiene ${data.points} puntos ($ ${data.points.toLocaleString("es-CO")} COP aprox)<br>
-                        <div class="form-check form-switch mt-1">
-                            <input class="form-check-input" type="checkbox" id="use-points-checkbox">
-                            <label class="form-check-label" for="use-points-checkbox">Aplicar como Descuento</label>
-                        </div>
+                    <div class="alert alert-secondary py-2 my-2" style="font-size:14px;">
+                        <strong>Cliente Fidelizado</strong><br>
+                        Tiene ${data.points} compras (Faltan ${10 - data.points} para recompensa).
                     </div>
                 `;
           } else {
@@ -1294,9 +1317,10 @@
         const payload = {
           order_id: currentSelectedOrder.id,
           method: method,
-          phone: phone || null,
+          cedula: phone || null,
+          redeemed_product_id: document.getElementById("reward-select") && document.getElementById("reward-select").value ? parseInt(document.getElementById("reward-select").value) : null,
           tip_amount: tip_amount,
-          points_used: usePoints ? currentCustomerPoints : 0,
+          
         };
         const currentOrderCopy = { ...currentSelectedOrder };
 
@@ -1336,6 +1360,7 @@
           }
 
           if (res.ok) {
+            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
             document.getElementById("tip-amount").value = "0";
             document.getElementById("loyalty-info").innerText = "";
 
@@ -1380,6 +1405,7 @@
         });
         const data = await res.json();
         if (res.ok) {
+            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
           alert(
             "Arqueo realizado. Efectivo Esperado: $" +
               data.expected_cash +
@@ -1595,6 +1621,7 @@
           });
           const result = await res.json();
           if (res.ok) {
+            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
             alert(
               `Factura FEV generada (${result.invoice_number}) - CUFE: ${result.cufe}\n¡Ahora puedes proceder a cobrar la orden!`,
             );
@@ -1689,6 +1716,7 @@
           });
 
           if (res.ok) {
+            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
             const data = await res.json();
             alert(
               `¡Bono Generado Exitosamente!\n\nCÓDIGO: ${data.code}\nVALOR: $${data.value.toLocaleString("es-CO")}\n\nPor favor, entrégale este código al cliente.`,
@@ -1728,6 +1756,7 @@
             }),
           });
           if (res.ok) {
+            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
             const data = await res.json();
             document.getElementById("delivery-modal").style.display = "none";
             document.getElementById("del-name").value = "";
@@ -1898,7 +1927,7 @@
                 type="text"
                 class="form-control"
                 id="del-phone"
-                placeholder="Ej: 3001234567"
+                placeholder="Ej: 123456789"
               />
             </div>
             <div class="mb-3">

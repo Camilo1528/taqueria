@@ -86,6 +86,7 @@ class ProductCreate(BaseModel):
     price_cop: float
     category_id: Optional[int] = None
     image_url: Optional[str] = None
+    is_reward: Optional[int] = 0
 
 class ProductResponse(BaseModel):
     id: int
@@ -93,6 +94,7 @@ class ProductResponse(BaseModel):
     price_cop: float
     category_id: Optional[int] = None
     image_url: Optional[str] = None
+    is_reward: Optional[int] = 0
 
 class CustomerOrderItem(BaseModel):
     product_id: int
@@ -154,7 +156,7 @@ def get_menu(current_user: dict = Depends(get_current_user)):
     """Retorna los productos activos para que el mesero los vea en su dispositivo."""
     try:
         # Consulta directamente la base de datos configurada en app/db.py
-        productos = db.all("SELECT id, name, price_cop, category_id, image_url FROM products WHERE active=1")
+        productos = db.all("SELECT id, name, price_cop, category_id, image_url, is_reward FROM products WHERE active=1")
         return [dict(p) for p in productos]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -184,8 +186,8 @@ async def custom_report(start_date: str, end_date: str, current_user: dict = Dep
 def create_product(data: ProductCreate, current_user: dict = Depends(get_current_user)):
     try:
         db.execute(
-            "INSERT INTO products (name, price_cop, category_id, image_url, active) VALUES (?, ?, ?, ?, 1)",
-            (data.name, data.price_cop, data.category_id, data.image_url)
+            "INSERT INTO products (name, price_cop, category_id, image_url, is_reward, active) VALUES (?, ?, ?, ?, ?, 1)",
+            (data.name, data.price_cop, data.category_id, data.image_url, data.is_reward)
         )
         return {"status": "ok"}
     except Exception as e:
@@ -195,8 +197,8 @@ def create_product(data: ProductCreate, current_user: dict = Depends(get_current
 def update_product(product_id: int, data: ProductCreate, current_user: dict = Depends(get_current_user)):
     try:
         db.execute(
-            "UPDATE products SET name=?, price_cop=?, category_id=?, image_url=? WHERE id=?",
-            (data.name, data.price_cop, data.category_id, data.image_url, product_id)
+            "UPDATE products SET name=?, price_cop=?, category_id=?, image_url=?, is_reward=? WHERE id=?",
+            (data.name, data.price_cop, data.category_id, data.image_url, data.is_reward, product_id)
         )
         return {"status": "ok"}
     except Exception as e:
@@ -214,7 +216,7 @@ def delete_product(product_id: int, current_user: dict = Depends(get_current_use
 def get_customer_menu():
     """Public endpoint for customers scanning the QR code"""
     try:
-        productos = db.all("SELECT id, name, price_cop, category_id, image_url FROM products WHERE active=1")
+        productos = db.all("SELECT id, name, price_cop, category_id, image_url, is_reward FROM products WHERE active=1")
         return [dict(p) for p in productos]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -333,6 +335,7 @@ class BrandingSchema(BaseModel):
     dian_api_key: Optional[str] = ""
     whatsapp_number: Optional[str] = ""
     ad_images: Optional[List[str]] = []
+    loyalty_enabled: Optional[bool] = True
 
 @app.post("/branding")
 def update_branding(data: BrandingSchema, current_user: dict = Depends(get_current_user)):
@@ -542,22 +545,40 @@ class ItemNotesSchema(BaseModel):
 class PaymentSchema(BaseModel):
     order_id: int
     method: str
-    phone: Optional[str] = None
+    cedula: Optional[str] = None
     tip_amount: float = 0.0
-    points_used: int = 0
+    redeemed_product_id: Optional[int] = None
 
 @app.post("/api/pos/pay")
 def process_payment(data: PaymentSchema, current_user: dict = Depends(get_current_user)):
-    if data.phone:
-        order = db.one("SELECT total_cop FROM orders WHERE id=?", (data.order_id,))
+    import json, os, uuid, datetime
+    path = os.path.join(os.path.dirname(__file__), "branding.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            branding = json.load(f)
+            loyalty_enabled = branding.get("loyalty_enabled", True)
+    except:
+        loyalty_enabled = True
+
+    voucher_code = None
+    if data.cedula and loyalty_enabled:
+        order = db.one("SELECT * FROM orders WHERE id=?", (data.order_id,))
         if order:
-            points_earned = int(order['total_cop'] / 100)
-            db.execute("INSERT INTO customers (phone, points) VALUES (?, ?) ON CONFLICT(phone) DO UPDATE SET points = points + ?", 
-                       (data.phone, points_earned, points_earned))
-            
-            if data.points_used > 0:
-                db.execute("UPDATE customers SET points = points - ? WHERE phone=?", (data.points_used, data.phone))
-                db.execute("UPDATE orders SET total_cop = total_cop - ? WHERE id=?", (data.points_used, data.order_id))
+            if data.redeemed_product_id:
+                product = db.one("SELECT id, name, price_cop FROM products WHERE id=? AND is_reward=1", (data.redeemed_product_id,))
+                if product:
+                    db.execute("UPDATE loyalty_customers SET points = points - 10 WHERE cedula=?", (data.cedula,))
+                    voucher_code = f"REC-{str(uuid.uuid4())[:8].upper()}"
+                    items_json = json.dumps([{"id": product["id"], "name": product["name"], "price": product["price_cop"]}])
+                    now_str = datetime.datetime.now().isoformat()
+                    db.execute("INSERT INTO vouchers (id, type, value_cop, items_json, identifier, is_redeemed, created_at, balance_cop) VALUES (?, 'RECOMPENSA', 0, ?, 'CUSTOMER', 0, ?, 0)",
+                               (voucher_code, items_json, now_str))
+            else:
+                customer = db.one("SELECT points FROM loyalty_customers WHERE cedula=?", (data.cedula,))
+                if customer:
+                    db.execute("UPDATE loyalty_customers SET points = points + 1 WHERE cedula=?", (data.cedula,))
+                else:
+                    db.execute("INSERT INTO loyalty_customers (cedula, points) VALUES (?, 1)", (data.cedula,))
     
     db.execute("UPDATE orders SET tip_amount_cop = ? WHERE id = ?", (data.tip_amount, data.order_id))
     success, msg = db.close_order_with_inventory(data.order_id, data.method)
@@ -567,9 +588,20 @@ def process_payment(data: PaymentSchema, current_user: dict = Depends(get_curren
         items = db.all("SELECT * FROM order_items WHERE order_id=?", (data.order_id,))
         if order:
             write_ticket(data.order_id, str(order.get('table_name', 'Mesa')), items, order['total_cop'], data.method)
-        return {"status": "ok", "message": msg}
+        return {"status": "ok", "message": msg, "voucher_code": voucher_code}
     else:
         raise HTTPException(status_code=400, detail=msg)
+
+
+@app.get("/api/loyalty/rewards")
+def get_loyalty_rewards():
+    prods = db.all("SELECT id, name FROM products WHERE is_reward=1 AND active=1")
+    return [dict(p) for p in prods]
+
+@app.get("/api/loyalty/{cedula}")
+def get_loyalty_points(cedula: str):
+    c = db.one("SELECT points FROM loyalty_customers WHERE cedula=?", (cedula,))
+    return {"points": c['points'] if c else 0}
 
 class AttendanceSchema(BaseModel):
     pin: str
