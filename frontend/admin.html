@@ -2554,7 +2554,7 @@
       // MENU
       async function loadMenu() {
         try {
-          const r = await fetch("/menu", { headers: AUTH() });
+          const r = await fetch("/menu?_t=" + new Date().getTime(), { headers: AUTH() });
           if (!r.ok) throw new Error();
           const items = await r.json();
           const b = document.getElementById("menu-tbody");
