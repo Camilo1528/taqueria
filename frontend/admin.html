@@ -1664,20 +1664,13 @@
 
     <!-- MODAL NUEVO PRODUCTO -->
     <div class="modal-overlay" id="modal-new-product">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 style="font-size: 18px; font-weight: 700; margin: 0">
-            <i class="bi bi-egg-fried"></i> Nuevo Producto
-          </h3>
-          <button
-            class="btn btn-outline btn-sm"
-            onclick="closeModal('modal-new-product')"
-            style="padding: 4px 8px"
-          >
+      <div class="modal-box">
+        <div class="modal-title">
+          <span><i class="bi bi-egg-fried" style="color: var(--primary)"></i> Nuevo Producto</span>
+          <button class="modal-close" onclick="closeModal('modal-new-product')">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
-        <div class="modal-body">
           <div class="form-group">
             <label>Nombre del Producto</label>
             <input
@@ -1737,26 +1730,18 @@
           >
             <i class="bi bi-save"></i> Guardar Producto
           </button>
-        </div>
       </div>
     </div>
 
     <!-- MODAL EDITAR PRODUCTO -->
     <div class="modal-overlay" id="modal-edit-product">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 style="font-size: 18px; font-weight: 700; margin: 0">
-            <i class="bi bi-pencil"></i> Editar Producto
-          </h3>
-          <button
-            class="btn btn-outline btn-sm"
-            onclick="closeModal('modal-edit-product')"
-            style="padding: 4px 8px"
-          >
+      <div class="modal-box">
+        <div class="modal-title">
+          <span><i class="bi bi-pencil" style="color: var(--primary)"></i> Editar Producto</span>
+          <button class="modal-close" onclick="closeModal('modal-edit-product')">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
-        <div class="modal-body">
           <input type="hidden" id="ep-id" />
           <div class="form-group">
             <label>Nombre del Producto</label>
@@ -1777,7 +1762,6 @@
           >
             <i class="bi bi-save"></i> Guardar Cambios
           </button>
-        </div>
       </div>
     </div>
 
@@ -2648,12 +2632,13 @@
           return;
         }
 
+        const isRewardEl = document.getElementById("np-is-reward");
         const body = {
           name: name,
           price_cop: price,
           category_id: isNaN(cat) ? null : cat,
           image_url: imageUrl ? imageUrl : null,
-          is_reward: parseInt(document.getElementById("np-is-reward").value) || 0,
+          is_reward: isRewardEl ? (parseInt(isRewardEl.value) || 0) : 0,
         };
         try {
           const r = await fetch("/api/products", {
@@ -2668,7 +2653,7 @@
             document.getElementById("np-price").value = "";
             document.getElementById("np-image").value = "";
             document.getElementById("np-cat").value = "";
-            document.getElementById("np-is-reward").value = "0";
+            if (document.getElementById("np-is-reward")) document.getElementById("np-is-reward").value = "0";
             loadMenu();
           } else {
             const e = await r.json();
