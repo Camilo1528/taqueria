@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taqueria-cache-v4';
+const CACHE_NAME = 'taqueria-cache-v5';
 const urlsToCache = [
   '/',
   '/login.html',
@@ -19,8 +19,8 @@ self.addEventListener('install', event => {
 self.addEventListener('fetch', event => {
   // Only intercept GET requests
   if (event.request.method !== 'GET') return;
-  // Ignore API calls
-  if (event.request.url.includes('/api/')) return;
+  // Ignore API calls and /menu
+  if (event.request.url.includes('/api/') || event.request.url.includes('/menu')) return;
 
   event.respondWith(
     caches.match(event.request)
