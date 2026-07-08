@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taqueria-cache-v3';
+const CACHE_NAME = 'taqueria-cache-v4';
 const urlsToCache = [
   '/',
   '/login.html',
