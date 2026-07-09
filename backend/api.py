@@ -677,12 +677,16 @@ def create_inventory_item(data: NewInventoryItemSchema, current_user: dict = Dep
     return {"status": "ok"}
 
 class AddStockSchema(BaseModel):
-    amount: float
+    qty: float
+    notes: Optional[str] = None
 
 @app.post("/api/inventory/{item_id}/add_stock")
 def add_inventory_stock(item_id: int, data: AddStockSchema, current_user: dict = Depends(get_current_user)):
-    db.execute("UPDATE inventory_items SET stock_current = stock_current + ? WHERE id=?", (data.amount, item_id))
-    db.log("admin", "ADD_STOCK", f"Añadido {data.amount} al item {item_id}")
+    db.execute("UPDATE inventory_items SET stock_current = stock_current + ? WHERE id=?", (data.qty, item_id))
+    log_msg = f"Añadido {data.qty} al item {item_id}"
+    if data.notes:
+        log_msg += f". Notas: {data.notes}"
+    db.log("admin", "ADD_STOCK", log_msg)
     return {"status": "ok"}
 
 class WasteSchema(BaseModel):
