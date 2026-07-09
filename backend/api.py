@@ -702,13 +702,13 @@ class RecipeItemSchema(BaseModel):
 
 @app.get("/api/products/{product_id}/recipe")
 def get_product_recipe(product_id: int, current_user: dict = Depends(get_current_user)):
-    items = db.execute('''
+    rows = db.all('''
         SELECT r.product_id, r.inventory_item_id, r.qty_needed, i.name as inventory_name, i.inventory_type 
         FROM recipe_items r 
         JOIN inventory_items i ON i.id = r.inventory_item_id 
         WHERE r.product_id = ?
     ''', (product_id,))
-    return items
+    return [dict(r) for r in rows]
 
 @app.post("/api/products/{product_id}/recipe")
 def add_recipe_item(product_id: int, data: RecipeItemSchema, current_user: dict = Depends(get_current_user)):
