@@ -99,4 +99,22 @@ class DB:
         if not user: return False, 'PIN inválido', None
         return True, 'OK', user
 
+    def ensure_schema(self) -> None:
+        """Agrega columnas que el código usa y que bases antiguas no tienen."""
+        wanted = {
+            'vouchers': [('balance_cop', 'REAL DEFAULT 0')],
+        }
+        with self.connect() as con:
+            for table, cols in wanted.items():
+                existing = {r['name'] for r in con.execute(f'PRAGMA table_info({table})')}
+                if not existing:
+                    continue  # la tabla no existe en esta base
+                for name, decl in cols:
+                    if name not in existing:
+                        con.execute(f'ALTER TABLE {table} ADD COLUMN {name} {decl}')
+                        if table == 'vouchers' and name == 'balance_cop':
+                            con.execute('UPDATE vouchers SET balance_cop = value_cop WHERE is_redeemed = 0')
+            con.commit()
+
 db = DB(DB_PATH)
+db.ensure_schema()

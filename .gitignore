@@ -36,3 +36,11 @@ backend/build/
 /find_taqueria.py
 /generate_docs.py
 /temp_recipes.py
+
+# Dependencias, secretos y binarios
+node_modules/
+.env
+backend/data/.jwt_secret
+*.zip
+backend/qr_output/
+backend/tickets/

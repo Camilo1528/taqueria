@@ -1,4 +1,4 @@
-﻿__pycache__/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -6,10 +6,18 @@
 env/
 venv/
 .venv/
-env.bak/
-venv.bak/
 *.log
 .DS_Store
 .git/
 .gitignore
 ~$*.docx
+node_modules/
+backend/dist/
+backend/build/
+backend/backups/
+backend/uploads/
+backend/data/
+*.db
+*.zip
+.env
+backend/.env

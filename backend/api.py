@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException, Security, Depends, WebSocket, WebSocketDisconnect, Header, UploadFile, File
+from fastapi import FastAPI, HTTPException, Security, Depends, WebSocket, WebSocketDisconnect, Header, UploadFile, File, Request
 from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from app.db import db
+from app.db import db as _db
 import uvicorn
 from dotenv import load_dotenv
 import threading
@@ -15,6 +16,9 @@ import time
 import zipfile
 import datetime
 import logging
+import secrets
+import sqlite3
+from collections import defaultdict
 import requests
 
 logging.basicConfig(filename='taqueria_server.log', level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -26,18 +30,20 @@ load_dotenv()
 app = FastAPI(title="Taquería Pro API")
 
 # Ciberseguridad: Cargar clave desde .env y limitar CORS
-API_KEY = os.getenv("API_KEY", "123456")
+API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    logger.warning("API_KEY no está definida: los endpoints que la requieren quedarán bloqueados.")
 api_key_header = APIKeyHeader(name="x-api-key")
 
+# Orígenes permitidos separados por coma, p.ej. "http://192.168.1.10:8000,https://mitaqueria.com"
+_cors = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # En producción cambiar por la IP de los iPads/Red local
-    allow_credentials=True,
+    allow_origins=_cors or ["*"],
+    allow_credentials=bool(_cors),  # nunca credenciales con comodín "*"
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-api_key_header = APIKeyHeader(name="x-api-key")
 
 class ConnectionManager:
     def __init__(self):
@@ -71,7 +77,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 def get_api_key(api_key: str = Security(api_key_header)):
-    if api_key != API_KEY:
+    if not API_KEY or not secrets.compare_digest(api_key or "", API_KEY):
         raise HTTPException(status_code=403, detail="Clave de API inválida")
     return api_key
 
@@ -133,11 +139,25 @@ def login(req: LoginRequest):
 class PinLoginRequest(BaseModel):
     pin: str
 
+# Límite de intentos fallidos por IP para frenar la fuerza bruta de PINs.
+_failed_logins: dict = defaultdict(list)
+_MAX_FAILS, _WINDOW_SECONDS = 5, 300
+
+def _check_rate_limit(ip: str) -> None:
+    now = time.time()
+    _failed_logins[ip] = [t for t in _failed_logins[ip] if now - t < _WINDOW_SECONDS]
+    if len(_failed_logins[ip]) >= _MAX_FAILS:
+        raise HTTPException(status_code=429, detail="Demasiados intentos. Espera unos minutos.")
+
 @app.post("/api/login/pin")
-def login_pin(req: PinLoginRequest):
+def login_pin(req: PinLoginRequest, request: Request):
+    ip = request.client.host if request.client else "?"
+    _check_rate_limit(ip)
     success, msg, user = db.authenticate_pin(req.pin)
     if not success:
+        _failed_logins[ip].append(time.time())
         raise HTTPException(status_code=401, detail=msg)
+    _failed_logins.pop(ip, None)
     token = create_access_token({"sub": user["username"], "role": user["role"], "id": user["id"]})
     return {"token": token, "role": user["role"], "username": user["username"]}
 
@@ -149,6 +169,18 @@ def get_current_user(authorization: str = Header(None)):
     if not payload:
         raise HTTPException(status_code=401, detail="Token inválido")
     return payload
+
+
+def require_roles(*roles: str):
+    """Dependencia que exige que el usuario tenga uno de los roles indicados."""
+    def checker(current_user: dict = Depends(get_current_user)):
+        if current_user.get("role") not in roles:
+            raise HTTPException(status_code=403, detail="No tienes permisos para esta acción")
+        return current_user
+    return checker
+
+require_admin = require_roles("admin")
+require_manager = require_roles("admin", "cajero")
 
 
 @app.get("/menu", response_model=List[ProductResponse])
@@ -167,7 +199,7 @@ async def get_categories():
     return [dict(r) for r in rows]
 
 @app.get("/api/admin/reports/custom")
-async def custom_report(start_date: str, end_date: str, current_user: dict = Depends(get_current_user)):
+async def custom_report(start_date: str, end_date: str, current_user: dict = Depends(require_manager)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="No autorizado")
     if len(start_date) != 10 or len(end_date) != 10:
@@ -183,7 +215,7 @@ async def custom_report(start_date: str, end_date: str, current_user: dict = Dep
 
 
 @app.post("/api/products")
-def create_product(data: ProductCreate, current_user: dict = Depends(get_current_user)):
+def create_product(data: ProductCreate, current_user: dict = Depends(require_manager)):
     try:
         db.execute(
             "INSERT INTO products (name, price_cop, category_id, image_url, is_reward, active) VALUES (?, ?, ?, ?, ?, 1)",
@@ -194,7 +226,7 @@ def create_product(data: ProductCreate, current_user: dict = Depends(get_current
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/products/{product_id}")
-def update_product(product_id: int, data: ProductCreate, current_user: dict = Depends(get_current_user)):
+def update_product(product_id: int, data: ProductCreate, current_user: dict = Depends(require_manager)):
     try:
         db.execute(
             "UPDATE products SET name=?, price_cop=?, category_id=?, image_url=?, is_reward=? WHERE id=?",
@@ -205,7 +237,7 @@ def update_product(product_id: int, data: ProductCreate, current_user: dict = De
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/products/{product_id}")
-def delete_product(product_id: int, current_user: dict = Depends(get_current_user)):
+def delete_product(product_id: int, current_user: dict = Depends(require_manager)):
     try:
         db.execute("UPDATE products SET active=0 WHERE id=?", (product_id,))
         return {"status": "ok"}
@@ -308,7 +340,7 @@ async def add_to_order(item: OrderItem, current_user: dict = Depends(get_current
 def get_kitchen_data(current_user: dict = Depends(get_current_user)):
     """Devuelve los ítems pendientes agrupados para la pantalla de cocina."""
     items = db.all('''
-        SELECT oi.*, p.name product_name, t.table_number 
+        SELECT oi.*, oi.product_name, t.id AS table_number, t.name AS table_name
         FROM order_items oi 
         JOIN orders o ON o.id = oi.order_id 
         JOIN tables t ON t.current_order_id = o.id 
@@ -338,7 +370,7 @@ class BrandingSchema(BaseModel):
     loyalty_enabled: Optional[bool] = True
 
 @app.post("/branding")
-def update_branding(data: BrandingSchema, current_user: dict = Depends(get_current_user)):
+def update_branding(data: BrandingSchema, current_user: dict = Depends(require_admin)):
     import json
     import os
     path = os.path.join(os.path.dirname(__file__), "branding.json")
@@ -356,14 +388,22 @@ def update_branding(data: BrandingSchema, current_user: dict = Depends(get_curre
         json.dump(data.model_dump(), f)
     return {"status": "ok"}
 
+ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp", "gif"}
+
+def _safe_image_ext(file: UploadFile) -> str:
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    if ext not in ALLOWED_IMAGE_EXT or not (file.content_type or "").startswith("image/"):
+        raise HTTPException(status_code=400, detail="Solo se permiten imágenes PNG, JPG, WEBP o GIF")
+    return ext
+
 @app.post("/api/upload_logo")
-async def upload_logo(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+async def upload_logo(file: UploadFile = File(...), current_user: dict = Depends(require_admin)):
     import os
     import shutil
     uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
     os.makedirs(uploads_dir, exist_ok=True)
     
-    ext = file.filename.split(".")[-1]
+    ext = _safe_image_ext(file)
     filename = f"logo.{ext}"
     filepath = os.path.join(uploads_dir, filename)
     
@@ -373,14 +413,14 @@ async def upload_logo(file: UploadFile = File(...), current_user: dict = Depends
     return {"status": "ok", "url": f"/uploads/{filename}"}
 
 @app.post("/api/upload_image")
-async def upload_image(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+async def upload_image(file: UploadFile = File(...), current_user: dict = Depends(require_manager)):
     import os
     import shutil
     import uuid
     uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
     os.makedirs(uploads_dir, exist_ok=True)
     
-    ext = file.filename.split(".")[-1]
+    ext = _safe_image_ext(file)
     filename = f"{uuid.uuid4().hex}.{ext}"
     filepath = os.path.join(uploads_dir, filename)
     
@@ -390,7 +430,7 @@ async def upload_image(file: UploadFile = File(...), current_user: dict = Depend
     return {"status": "ok", "url": f"/uploads/{filename}"}
 
 @app.get("/dashboard_data")
-def get_dashboard_data(current_user: dict = Depends(get_current_user)):
+def get_dashboard_data(current_user: dict = Depends(require_manager)):
     summary = db.sales_summary_today()
     # IA Predictiva (Cerebro)
     insights = []
@@ -419,7 +459,7 @@ async def cfd_update(data: CFDUpdate, api_key: str = Depends(get_api_key)):
 
 @app.websocket("/ws/kitchen")
 async def websocket_endpoint(websocket: WebSocket, token: str = None, api_key: str = None):
-    if api_key == API_KEY:
+    if API_KEY and api_key and secrets.compare_digest(api_key, API_KEY):
         pass
     elif token:
         payload = verify_token(token)
@@ -438,7 +478,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None, api_key: s
 
 @app.websocket("/ws/cfd")
 async def websocket_cfd(websocket: WebSocket, api_key: str = None):
-    if api_key != API_KEY:
+    if not API_KEY or not secrets.compare_digest(api_key or "", API_KEY):
         await websocket.close(code=1008, reason="Invalid API Key")
         return
     await manager.connect_cfd(websocket)
@@ -451,19 +491,19 @@ async def websocket_cfd(websocket: WebSocket, api_key: str = None):
 
 
 @app.post("/api/sync_receive")
-def sync_receive(data: dict):
+def sync_receive(data: dict, api_key: str = Depends(get_api_key)):
     """Endpoint MODO MAESTRO: Recibe ventas de las sucursales y las guarda en su propia DB"""
     try:
         data.get("branch_id")
         for order in data.get("orders", []):
             try:
-                db.execute("INSERT INTO orders (id, status, table_number, total_cop, payment_method, created_at, closed_at) VALUES (?,?,?,?,?,?,?)",
-                           (order['id'], order['status'], order['table_number'], order['total_cop'], order['payment_method'], order['created_at'], order['closed_at']))
+                db.execute("INSERT INTO orders (id, status, table_name, total_cop, payment_method, created_at, closed_at) VALUES (?,?,?,?,?,?,?)",
+                           (order['id'], order['status'], order.get('table_name') or order.get('table_number'), order['total_cop'], order['payment_method'], order['created_at'], order['closed_at']))
                 for item in order['items']:
                     db.execute("INSERT INTO order_items (order_id, product_id, product_name, qty, price_cop, total_cop) VALUES (?,?,?,?,?,?)",
                                (order['id'], item['product_id'], item['product_name'], item['qty'], item['price_cop'], item['total_cop']))
-            except:
-                pass # Ignorar si ya existe
+            except sqlite3.IntegrityError:
+                pass  # La orden ya existe
         return {"status": "ok", "message": "Synced"}
     except Exception as e:
         logger.error(f"Error en Master Sync: {e}")
@@ -557,7 +597,7 @@ def process_payment(data: PaymentSchema, current_user: dict = Depends(get_curren
         with open(path, "r", encoding="utf-8") as f:
             branding = json.load(f)
             loyalty_enabled = branding.get("loyalty_enabled", True)
-    except:
+    except (OSError, ValueError):
         loyalty_enabled = True
 
     voucher_code = None
@@ -566,6 +606,9 @@ def process_payment(data: PaymentSchema, current_user: dict = Depends(get_curren
         if order:
             if data.redeemed_product_id:
                 product = db.one("SELECT id, name, price_cop FROM products WHERE id=? AND is_reward=1", (data.redeemed_product_id,))
+                customer = db.one("SELECT points FROM loyalty_customers WHERE cedula=?", (data.cedula,))
+                if not customer or customer['points'] < 10:
+                    raise HTTPException(status_code=400, detail="El cliente no tiene puntos suficientes (mínimo 10)")
                 if product:
                     db.execute("UPDATE loyalty_customers SET points = points - 10 WHERE cedula=?", (data.cedula,))
                     voucher_code = f"REC-{str(uuid.uuid4())[:8].upper()}"
@@ -587,7 +630,7 @@ def process_payment(data: PaymentSchema, current_user: dict = Depends(get_curren
         order = db.one("SELECT * FROM orders WHERE id=?", (data.order_id,))
         items = db.all("SELECT * FROM order_items WHERE order_id=?", (data.order_id,))
         if order:
-            write_ticket(data.order_id, str(order.get('table_name', 'Mesa')), items, order['total_cop'], data.method)
+            write_ticket(data.order_id, str(order['table_name'] or 'Mesa'), items, order['total_cop'], data.method)
         return {"status": "ok", "message": msg, "voucher_code": voucher_code}
     else:
         raise HTTPException(status_code=400, detail=msg)
@@ -616,7 +659,7 @@ def log_attendance(data: AttendanceSchema):
     last_log = db.one("SELECT log_type FROM attendance_logs WHERE user_id=? ORDER BY id DESC LIMIT 1", (user['id'],))
     new_type = 'out' if last_log and last_log['log_type'] == 'in' else 'in'
     
-    timestamp = datetime.now().isoformat()
+    timestamp = datetime.datetime.now().isoformat()
     db.execute("INSERT INTO attendance_logs (user_id, log_type, timestamp) VALUES (?,?,?)", (user['id'], new_type, timestamp))
     return {"status": "ok", "type": new_type, "user": user['first_name'] or user['username']}
 
@@ -670,7 +713,7 @@ def get_inventory(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/inventory")
-def create_inventory_item(data: NewInventoryItemSchema, current_user: dict = Depends(get_current_user)):
+def create_inventory_item(data: NewInventoryItemSchema, current_user: dict = Depends(require_manager)):
     db.execute("INSERT INTO inventory_items (name, stock_current, stock_min, inventory_type) VALUES (?, ?, ?, ?)",
                (data.name, 0.0, data.stock_min, data.inventory_type))
     db.log(current_user.get('username', 'admin'), "CREATE_INVENTORY_ITEM", f"Creado: {data.name}")
@@ -681,7 +724,7 @@ class AddStockSchema(BaseModel):
     notes: Optional[str] = None
 
 @app.post("/api/inventory/{item_id}/add_stock")
-def add_inventory_stock(item_id: int, data: AddStockSchema, current_user: dict = Depends(get_current_user)):
+def add_inventory_stock(item_id: int, data: AddStockSchema, current_user: dict = Depends(require_manager)):
     db.execute("UPDATE inventory_items SET stock_current = stock_current + ? WHERE id=?", (data.qty, item_id))
     log_msg = f"Añadido {data.qty} al item {item_id}"
     if data.notes:
@@ -694,7 +737,7 @@ class WasteSchema(BaseModel):
     reason: str
 
 @app.post("/api/inventory/{item_id}/waste")
-def register_waste(item_id: int, data: WasteSchema, current_user: dict = Depends(get_current_user)):
+def register_waste(item_id: int, data: WasteSchema, current_user: dict = Depends(require_manager)):
     db.execute("UPDATE inventory_items SET stock_current = stock_current - ? WHERE id=?", (data.amount, item_id))
     db.execute("INSERT INTO waste_logs (inventory_item_id, qty, reason, user_id) VALUES (?,?,?,?)",
                (item_id, data.amount, data.reason, current_user.get('id', 0)))
@@ -715,7 +758,7 @@ def get_product_recipe(product_id: int, current_user: dict = Depends(get_current
     return [dict(r) for r in rows]
 
 @app.post("/api/products/{product_id}/recipe")
-def add_recipe_item(product_id: int, data: RecipeItemSchema, current_user: dict = Depends(get_current_user)):
+def add_recipe_item(product_id: int, data: RecipeItemSchema, current_user: dict = Depends(require_manager)):
     # Delete if exists to act as an upsert/update
     db.execute("DELETE FROM recipe_items WHERE product_id=? AND inventory_item_id=?", (product_id, data.inventory_item_id))
     db.execute("INSERT INTO recipe_items (product_id, inventory_item_id, qty_needed) VALUES (?,?,?)", 
@@ -724,13 +767,13 @@ def add_recipe_item(product_id: int, data: RecipeItemSchema, current_user: dict 
     return {"status": "ok"}
 
 @app.delete("/api/products/{product_id}/recipe/{inventory_item_id}")
-def delete_recipe_item(product_id: int, inventory_item_id: int, current_user: dict = Depends(get_current_user)):
+def delete_recipe_item(product_id: int, inventory_item_id: int, current_user: dict = Depends(require_manager)):
     db.execute("DELETE FROM recipe_items WHERE product_id=? AND inventory_item_id=?", (product_id, inventory_item_id))
     db.log(current_user.get('username', 'admin'), "DELETE_RECIPE_ITEM", f"Borrado item {inventory_item_id} de {product_id}")
     return {"status": "ok"}
 
 @app.get("/api/inventory/predict")
-def predict_purchases(current_user: dict = Depends(get_current_user)):
+def predict_purchases(current_user: dict = Depends(require_manager)):
     # Simple ML heuristic: Calculate daily consumption of each inventory item based on closed orders in the last 7 days.
     # We join orders -> order_items -> recipes -> inventory_items.
     # Note: SQLite datetime('now', '-7 days') works nicely.
@@ -780,7 +823,7 @@ def predict_purchases(current_user: dict = Depends(get_current_user)):
     return {"status": "ok", "predictions": predictions}
 
 @app.get("/api/users")
-def get_users(current_user: dict = Depends(get_current_user)):
+def get_users(current_user: dict = Depends(require_admin)):
     return [dict(r) for r in db.all("SELECT id, username, role, pin, active, daily_wage FROM users")]
 
 class UserCreateSchema(BaseModel):
@@ -791,7 +834,7 @@ class UserCreateSchema(BaseModel):
     daily_wage: float
 
 @app.post("/api/users")
-def create_user(data: UserCreateSchema, current_user: dict = Depends(get_current_user)):
+def create_user(data: UserCreateSchema, current_user: dict = Depends(require_admin)):
     from app.security import hash_password
     hash_pw = hash_password(data.password)
     db.execute("INSERT INTO users (username, password_hash, role, pin, active, daily_wage) VALUES (?,?,?,?,1,?)",
@@ -799,12 +842,12 @@ def create_user(data: UserCreateSchema, current_user: dict = Depends(get_current
     return {"status": "ok"}
 
 @app.delete("/api/users/{user_id}")
-def delete_user(user_id: int, current_user: dict = Depends(get_current_user)):
+def delete_user(user_id: int, current_user: dict = Depends(require_admin)):
     db.execute("UPDATE users SET active=0 WHERE id=?", (user_id,))
     return {"status": "ok"}
 
 @app.get("/api/reports/sales_trend")
-def get_sales_trend(current_user: dict = Depends(get_current_user)):
+def get_sales_trend(current_user: dict = Depends(require_manager)):
     # Group sales by day for the last 7 days
     rows = db.all("""
         SELECT substr(closed_at,1,10) as date, SUM(total_cop) as total 
@@ -846,6 +889,8 @@ def update_reservation(res_id: int, data: dict, current_user: dict = Depends(get
 # --- ONLINE PAYMENTS ---
 @app.post("/api/customer/pay/{order_id}")
 def customer_online_pay(order_id: int):
+    # TODO: esto es una SIMULACIÓN. Antes de producción, reemplazar por el webhook
+    # firmado de la pasarela (Wompi/MercadoPago); hoy cualquiera puede cerrar una orden.
     # Simulates MercadoPago / Wompi successful callback
     db.close_order_with_inventory(order_id, "online")
     return {"status": "ok"}
@@ -870,7 +915,7 @@ class AssignDeliverySchema(BaseModel):
     driver_id: int
 
 @app.post("/api/delivery/assign/{order_id}")
-def assign_delivery(order_id: int, data: AssignDeliverySchema, current_user: dict = Depends(get_current_user)):
+def assign_delivery(order_id: int, data: AssignDeliverySchema, current_user: dict = Depends(require_manager)):
     logger.info(f"🚀 WHATSAPP AL CLIENTE: 'Tu pedido (Orden #{order_id}) va en camino con tu domiciliario. ¡Espéralo pronto!'")
     db.execute("UPDATE orders SET driver_id = ?, kitchen_status = 'on_the_way' WHERE id = ?", (data.driver_id, order_id))
     return {"status": "ok"}
@@ -907,7 +952,7 @@ class DianCustomerSchema(BaseModel):
     email: str
 
 @app.post("/api/dian/invoice")
-def generate_dian_invoice(data: DianCustomerSchema, current_user: dict = Depends(get_current_user)):
+def generate_dian_invoice(data: DianCustomerSchema, current_user: dict = Depends(require_manager)):
     order = db.one("SELECT * FROM orders WHERE id=?", (data.order_id,))
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -939,7 +984,7 @@ if os.path.exists(frontend_path):
 
 # --- MULTI-BRANCH SYNC (FRANCHISE) ---
 @app.post("/api/sync/master")
-def sync_to_master(current_user: dict = Depends(get_current_user)):
+def sync_to_master(current_user: dict = Depends(require_admin)):
     try:
         # Collect basic metrics
         orders_count = db.one("SELECT COUNT(*) as c FROM orders")['c']
@@ -971,7 +1016,6 @@ if __name__ == "__main__":
 # ==========================================
 import string
 import random
-from datetime import datetime
 
 class GiftCardSchema(BaseModel):
     value_cop: float
@@ -982,9 +1026,9 @@ class RedeemSchema(BaseModel):
     amount: float
 
 @app.post("/api/vouchers/gift_card")
-async def create_gift_card(data: GiftCardSchema, current_user: dict = Depends(get_current_user)):
+async def create_gift_card(data: GiftCardSchema, current_user: dict = Depends(require_manager)):
     code = "BONO-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    db = get_db()
+    db = _db.connect()
     
     # Determinar el tipo interno e identificador según lo que manda el frontend
     internal_type = "GIFT_CARD" if data.type == "CUSTOMER" else "COURTESY_GIFT"
@@ -992,7 +1036,7 @@ async def create_gift_card(data: GiftCardSchema, current_user: dict = Depends(ge
     
     try:
         db.execute("INSERT INTO vouchers (id, type, value_cop, balance_cop, is_redeemed, created_at, identifier) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                   (code, internal_type, data.value_cop, data.value_cop, 0, datetime.now().isoformat(), identifier))
+                   (code, internal_type, data.value_cop, data.value_cop, 0, datetime.datetime.now().isoformat(), identifier))
         db.commit()
         return {"code": code, "value": data.value_cop}
     finally:
@@ -1000,7 +1044,7 @@ async def create_gift_card(data: GiftCardSchema, current_user: dict = Depends(ge
 
 @app.get("/api/vouchers/{code}/validate")
 async def validate_voucher(code: str, current_user: dict = Depends(get_current_user)):
-    db = get_db()
+    db = _db.connect()
     try:
         cur = db.execute("SELECT balance_cop, is_redeemed FROM vouchers WHERE id = ?", (code,))
         row = cur.fetchone()
@@ -1014,26 +1058,34 @@ async def validate_voucher(code: str, current_user: dict = Depends(get_current_u
 
 @app.post("/api/vouchers/{code}/redeem")
 async def redeem_voucher(code: str, data: RedeemSchema, current_user: dict = Depends(get_current_user)):
-    db = get_db()
+    db = _db.connect()
     try:
         cur = db.execute("SELECT balance_cop FROM vouchers WHERE id = ?", (code,))
         row = cur.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Bono no encontrado")
         
+        if data.amount <= 0:
+            raise HTTPException(status_code=400, detail="El monto debe ser mayor que cero")
+        if row['balance_cop'] < data.amount:
+            raise HTTPException(status_code=400, detail="Saldo insuficiente en el bono")
         new_balance = row['balance_cop'] - data.amount
         is_redeemed = 1 if new_balance <= 0 else 0
         new_balance = max(0, new_balance)
 
-        db.execute("UPDATE vouchers SET balance_cop = ?, is_redeemed = ? WHERE id = ?", (new_balance, is_redeemed, code))
+        # Condición sobre el saldo para evitar dobles canjes simultáneos
+        cur = db.execute("UPDATE vouchers SET balance_cop = ?, is_redeemed = ? WHERE id = ? AND balance_cop >= ?",
+                         (new_balance, is_redeemed, code, data.amount))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=409, detail="El saldo cambió, intenta de nuevo")
         db.commit()
         return {"success": True, "new_balance": new_balance}
     finally:
         db.close()
 
 @app.get("/api/vouchers")
-async def get_vouchers(current_user: dict = Depends(get_current_user)):
-    db = get_db()
+async def get_vouchers(current_user: dict = Depends(require_manager)):
+    db = _db.connect()
     try:
         cur = db.execute("SELECT id, type, value_cop, balance_cop, is_redeemed, created_at, identifier FROM vouchers ORDER BY created_at DESC")
         vouchers = [dict(row) for row in cur.fetchall()]
@@ -1042,10 +1094,10 @@ async def get_vouchers(current_user: dict = Depends(get_current_user)):
         db.close()
 
 @app.get("/api/employees/birthdays")
-async def get_birthdays(current_user: dict = Depends(get_current_user)):
-    db = get_db()
+async def get_birthdays(current_user: dict = Depends(require_manager)):
+    db = _db.connect()
     try:
-        current_month = f"-{datetime.now().month:02d}-"
+        current_month = f"-{datetime.datetime.now().month:02d}-"
         cur = db.execute("SELECT id, username, first_name, last_name, birth_date FROM users WHERE active=1 AND birth_date LIKE ?", ('%' + current_month + '%',))
         employees = []
         for row in cur.fetchall():
@@ -1059,12 +1111,12 @@ class IssueBonusSchema(BaseModel):
     value_cop: float
 
 @app.post("/api/employees/issue_birthday_bonus")
-async def issue_birthday_bonus(data: IssueBonusSchema, current_user: dict = Depends(get_current_user)):
+async def issue_birthday_bonus(data: IssueBonusSchema, current_user: dict = Depends(require_manager)):
     code = "HBAY-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=5))
-    db = get_db()
+    db = _db.connect()
     try:
         db.execute("INSERT INTO vouchers (id, type, value_cop, balance_cop, is_redeemed, created_at, identifier) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                   (code, "BIRTHDAY", data.value_cop, data.value_cop, 0, datetime.now().isoformat(), f"EMP-{data.employee_id}"))
+                   (code, "BIRTHDAY", data.value_cop, data.value_cop, 0, datetime.datetime.now().isoformat(), f"EMP-{data.employee_id}"))
         db.commit()
         return {"code": code, "value": data.value_cop}
     finally:
