@@ -1,7 +1,5 @@
 import os
 from datetime import datetime
-from pathlib import Path
-import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,8 +29,10 @@ def print_file_to_default_printer(filepath: str):
 
 def write_ticket(order_id: int, table_num: str, items: list, total: float, payment_method: str) -> None:
     """Simula la impresión de un ticket de compra guardándolo en un archivo."""
-    os.makedirs('tickets', exist_ok=True)
-    filename = f"tickets/ticket_{order_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    # Siempre en backend/tickets (la carpeta que monta docker-compose), sin importar desde dónde se arranque
+    from app.paths import TICKET_DIR
+    TICKET_DIR.mkdir(parents=True, exist_ok=True)
+    filename = str(TICKET_DIR / f"ticket_{order_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
     with open(filename, 'w', encoding='utf-8') as f:
         f.write("="*30 + "\n")
         f.write("       TAQUERÍA PRO       \n")

@@ -1,10 +1,10 @@
-﻿fastapi
-uvicorn
-python-multipart
-PyJWT
-bcrypt
-websockets
-python-docx
-python-dotenv
-schedule
-requests
+# Dependencias de Taquería Pro (versiones probadas)
+fastapi==0.162.0
+uvicorn==0.54.0
+websockets==17.4
+python-multipart==0.0.33
+PyJWT==2.15.1
+bcrypt==5.0.0
+python-dotenv==1.2.4
+schedule==1.2.2
+requests==2.34.2

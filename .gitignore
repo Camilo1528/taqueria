@@ -44,3 +44,12 @@ backend/data/.jwt_secret
 *.zip
 backend/qr_output/
 backend/tickets/
+
+# Archivos locales
+/tickets/
+.claude/launch.json
+
+# Notas privadas (contienen credenciales: nunca subirlas)
+memory.md
+backend/data/integrations.json
+backend/data/primer_acceso.txt

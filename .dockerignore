@@ -21,3 +21,10 @@ backend/data/
 *.zip
 .env
 backend/.env
+
+# Archivos locales que no deben ir en la imagen
+memory.md
+.claude/
+tickets/
+*.log
+node_modules/

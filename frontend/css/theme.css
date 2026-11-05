@@ -1,0 +1,326 @@
+/* =====================================================================
+   Taquería Pro — Tema común
+   Una sola paleta, tipografía y forma de componentes para todas las pantallas.
+   Se carga DESPUÉS de bootstrap y de los estilos propios de cada página.
+   Pantallas claras: <body> normal.  Pantallas oscuras (cocina, TV): <body class="tp-dark">.
+   ===================================================================== */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --tp-primary: #6366f1;
+  --tp-primary-600: #4f46e5;
+  --tp-primary-50: #eef2ff;
+  --tp-success: #10b981;
+  --tp-success-600: #059669;
+  --tp-warning: #f59e0b;
+  --tp-danger: #ef4444;
+  --tp-info: #06b6d4;
+
+  --tp-ink: #0f172a;        /* barras superiores / texto fuerte */
+  --tp-ink-2: #1e293b;
+  --tp-text: #1e293b;
+  --tp-muted: #64748b;
+  --tp-bg: #f1f5f9;
+  --tp-surface: #ffffff;
+  --tp-border: #e2e8f0;
+
+  --tp-radius: 14px;
+  --tp-radius-sm: 10px;
+  --tp-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 6px 20px rgba(15, 23, 42, 0.06);
+  --tp-shadow-lg: 0 10px 40px rgba(15, 23, 42, 0.16);
+
+  /* Bootstrap 5 toma estas variables */
+  --bs-primary: var(--tp-primary);
+  --bs-primary-rgb: 99, 102, 241;
+  --bs-success: var(--tp-success);
+  --bs-success-rgb: 16, 185, 129;
+  --bs-body-font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --bs-body-color: var(--tp-text);
+  --bs-border-radius: var(--tp-radius-sm);
+  --bs-border-color: var(--tp-border);
+}
+
+/* ---------- Base ---------- */
+html,
+body {
+  font-family: var(--bs-body-font-family) !important;
+  -webkit-font-smoothing: antialiased;
+}
+body:not(.tp-dark) {
+  background: var(--tp-bg) !important;
+  color: var(--tp-text);
+}
+h1, h2, h3, h4, h5, h6, .fw-bold {
+  letter-spacing: -0.01em;
+}
+a {
+  color: var(--tp-primary-600);
+}
+::selection {
+  background: rgba(99, 102, 241, 0.25);
+}
+
+/* ---------- Barra superior (caja, mesero, domiciliario, cliente) ---------- */
+.pos-header,
+.tp-topbar,
+body:not(.tp-dark) .header,
+.navbar.bg-dark {
+  background: linear-gradient(90deg, var(--tp-ink), var(--tp-ink-2)) !important;
+  color: #fff !important;
+  padding: 12px 20px !important;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.25);
+  border: 0 !important;
+}
+.pos-header h2,
+.tp-topbar h1,
+.tp-topbar h2 {
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  margin: 0;
+}
+.pos-header .text-success {
+  color: #34d399 !important;
+}
+
+/* ---------- Tarjetas ---------- */
+.card,
+.order-card,
+.ticket,
+.payment-panel,
+.login-card,
+.tp-card {
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border) !important;
+  border-radius: var(--tp-radius) !important;
+  box-shadow: var(--tp-shadow) !important;
+}
+.order-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s;
+  cursor: pointer;
+}
+.order-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--tp-shadow-lg) !important;
+  border-color: var(--tp-primary) !important;
+}
+.order-card.border-primary {
+  border-left: 4px solid var(--tp-primary) !important;
+}
+
+/* ---------- Botones ---------- */
+.btn {
+  border-radius: var(--tp-radius-sm) !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: transform 0.08s ease, box-shadow 0.15s ease, background-color 0.15s;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn-lg,
+.pay-btn {
+  padding: 0.8rem 1.1rem !important;
+  font-size: 1.05rem !important;
+}
+.btn-primary {
+  background: var(--tp-primary) !important;
+  border-color: var(--tp-primary) !important;
+}
+.btn-primary:hover {
+  background: var(--tp-primary-600) !important;
+  border-color: var(--tp-primary-600) !important;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.35);
+}
+.btn-success {
+  background: var(--tp-success) !important;
+  border-color: var(--tp-success) !important;
+}
+.btn-success:hover {
+  background: var(--tp-success-600) !important;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+}
+.btn-warning {
+  background: var(--tp-warning) !important;
+  border-color: var(--tp-warning) !important;
+  color: #1f2937 !important;
+}
+.btn-danger {
+  background: var(--tp-danger) !important;
+  border-color: var(--tp-danger) !important;
+}
+.btn-info {
+  background: var(--tp-info) !important;
+  border-color: var(--tp-info) !important;
+  color: #fff !important;
+}
+.btn-dark,
+.btn-secondary {
+  background: var(--tp-ink-2) !important;
+  border-color: var(--tp-ink-2) !important;
+  color: #fff !important;
+}
+.btn-light {
+  background: #fff !important;
+  border-color: var(--tp-border) !important;
+  color: var(--tp-text) !important;
+}
+[class*="btn-outline-"] {
+  background: #fff;
+}
+.btn-outline-light {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  color: #fff !important;
+}
+.btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ---------- Formularios ---------- */
+.form-control,
+.form-select {
+  border-radius: var(--tp-radius-sm) !important;
+  border-color: var(--tp-border) !important;
+  padding: 0.6rem 0.85rem;
+}
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--tp-primary) !important;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15) !important;
+}
+.form-label {
+  font-weight: 600;
+  color: var(--tp-muted);
+  font-size: 0.85rem;
+}
+.input-group-text {
+  background: #f8fafc;
+  border-color: var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+}
+
+/* ---------- Ventanas (modales) ---------- */
+.modal-content {
+  border: 0 !important;
+  border-radius: 18px !important;
+  box-shadow: var(--tp-shadow-lg) !important;
+  overflow: hidden;
+}
+.modal-header {
+  border-bottom: 1px solid var(--tp-border) !important;
+  padding: 1rem 1.25rem;
+}
+.modal-header.bg-dark,
+.modal-header.bg-danger,
+.modal-header.bg-primary,
+.modal-header.bg-success,
+.modal-header.bg-warning,
+.modal-header.bg-info {
+  background: linear-gradient(90deg, var(--tp-ink), var(--tp-ink-2)) !important;
+  color: #fff !important;
+}
+.modal-title {
+  font-weight: 800;
+}
+.modal-footer {
+  border-top: 1px solid var(--tp-border) !important;
+}
+.modal[style*="display: block"] {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+/* ---------- Insignias y alertas ---------- */
+.badge {
+  border-radius: 999px !important;
+  font-weight: 700;
+  padding: 0.4em 0.75em;
+}
+.badge.bg-secondary {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+}
+.alert {
+  border-radius: var(--tp-radius-sm) !important;
+  border: 1px solid transparent;
+}
+.alert-info {
+  background: var(--tp-primary-50) !important;
+  border-color: #c7d2fe !important;
+  color: #3730a3 !important;
+}
+.list-group-item {
+  border-color: var(--tp-border) !important;
+}
+
+/* ---------- Totales grandes ---------- */
+.text-success {
+  color: var(--tp-success-600) !important;
+}
+
+/* ---------- Tema oscuro (cocina, pantallas de TV) ---------- */
+body.tp-dark {
+  background: radial-gradient(1200px 600px at 10% -10%, #1e1b4b 0%, transparent 60%), #0b1020 !important;
+  color: #e2e8f0;
+}
+body.tp-dark .ticket {
+  background: #ffffff;
+  color: var(--tp-text);
+  border: 0 !important;
+}
+body.tp-dark .btn-outline-info {
+  background: transparent !important;
+  color: #67e8f9 !important;
+  border-color: rgba(103, 232, 249, 0.5) !important;
+}
+
+/* ---------- Accesibilidad / foco visible ---------- */
+:focus-visible {
+  outline: 3px solid rgba(99, 102, 241, 0.55);
+  outline-offset: 2px;
+}
+
+/* ---------- Pestañas tipo "pill" ---------- */
+.nav-pills .nav-link {
+  border-radius: 999px !important;
+  font-weight: 600;
+  color: var(--tp-muted);
+}
+.nav-pills .nav-link.active {
+  background: var(--tp-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+/* ---------- Pantalla de ingreso ---------- */
+body.tp-auth {
+  background: radial-gradient(900px 500px at 15% 10%, rgba(99, 102, 241, 0.45), transparent 60%),
+    radial-gradient(800px 500px at 85% 90%, rgba(16, 185, 129, 0.30), transparent 60%), #0b1020 !important;
+}
+body.tp-auth .login-card {
+  border: 0 !important;
+  border-radius: 22px !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45) !important;
+  padding: 2.25rem !important;
+}
+.tp-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  background: linear-gradient(135deg, var(--tp-primary), #8b5cf6);
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.45);
+  margin-bottom: 14px;
+}
+
+/* El fondo oscuro cubre toda la pantalla aunque haya poco contenido */
+html:has(body.tp-dark) {
+  background: #0b1020;
+}
+body.tp-dark {
+  min-height: 100vh;
+  background-attachment: fixed !important;
+}

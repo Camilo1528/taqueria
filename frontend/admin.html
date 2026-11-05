@@ -15,7 +15,7 @@
     />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>Admin - Taqueria Pro</title>
+    <title>Admin - Taquería Pro</title>
     <link href="libs/bootstrap.min.css" rel="stylesheet" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
@@ -25,7 +25,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
     />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="libs/chart.js"></script>
     <style>
       :root {
         --primary: #6366f1;
@@ -347,6 +347,16 @@
       tr:hover td {
         background: rgba(255, 255, 255, 0.02);
       }
+      .form-control:disabled {
+        background: var(--card2);
+        color: var(--text-muted);
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+      .form-control::placeholder {
+        color: var(--text-muted);
+        opacity: 0.85;
+      }
       .form-control,
       .form-select {
         background: var(--card2);
@@ -619,15 +629,206 @@
         gap: 10px;
         font-size: 13px;
       }
+      /* Configuración: tarjetas con su propio alto, en dos columnas tipo mosaico */
+      #sec-configuracion > .grid-2 {
+        display: block;
+        columns: 2 420px;
+        column-gap: 16px;
+      }
+      #sec-configuracion > .grid-2 > .card {
+        break-inside: avoid;
+        margin-bottom: 16px;
+        display: block;
+        width: 100%;
+      }
+      /* ---- Integraciones ---- */
+      .int-switch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        margin: 6px 0 10px;
+        cursor: pointer;
+      }
+      .int-switch input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--primary);
+      }
+      .int-help {
+        display: block;
+        color: var(--text-muted);
+        font-size: 12px;
+        margin-bottom: 12px;
+        line-height: 1.45;
+      }
+      .int-set {
+        font-size: 11px;
+        color: var(--success, #10b981);
+        font-weight: 700;
+      }
+      .int-status {
+        font-size: 12px;
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 10px;
+        word-break: break-all;
+      }
+
+      /* ---- Publicidad ---- */
+      .ad-drop {
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 22px;
+        border: 2px dashed var(--border);
+        border-radius: 14px;
+        cursor: pointer;
+        color: var(--text-muted);
+        transition: border-color 0.2s, background 0.2s;
+      }
+      .ad-drop:hover {
+        border-color: var(--primary);
+        background: rgba(99, 102, 241, 0.06);
+      }
+      .ad-drop i {
+        font-size: 32px;
+        color: var(--primary);
+      }
+      .ads-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+      }
+      .ad-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+      }
+      .ad-card.off {
+        opacity: 0.55;
+      }
+      .ad-thumb {
+        aspect-ratio: 16 / 9;
+        background: #0b1020 center / cover no-repeat;
+        position: relative;
+      }
+      .ad-thumb .ad-preview-text {
+        position: absolute;
+        inset: auto 0 0 0;
+        padding: 30px 12px 10px;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        font-weight: 800;
+        color: #fff;
+        font-size: 15px;
+      }
+      .ad-thumb .ad-preview-text small {
+        display: block;
+        color: #fbbf24;
+        font-weight: 700;
+      }
+      .ad-thumb .promo-tag {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: #ef4444;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 3px 10px;
+        border-radius: 999px;
+      }
+      .ad-body {
+        padding: 14px;
+        display: grid;
+        gap: 10px;
+      }
+      .ad-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .ad-row label {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
+
+      /* ---- Celular y tablet pequeña: menú lateral desplegable ---- */
+      #menu-toggle {
+        display: none;
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 8px;
+        font-size: 20px;
+        line-height: 1;
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+      #sidebar-backdrop {
+        display: none;
+      }
+      @media (max-width: 768px) {
+        #menu-toggle {
+          display: inline-block;
+        }
+        #sidebar {
+          transform: translateX(-100%);
+          transition: transform 0.25s ease;
+          box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+        #sidebar.open {
+          transform: none;
+        }
+        #sidebar-backdrop.open {
+          display: block;
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 90;
+        }
+        #main {
+          margin-left: 0;
+        }
+        .topbar {
+          padding: 0 16px;
+          gap: 10px;
+        }
+        #topbar-time,
+        .badge-live {
+          display: none;
+        }
+        .content {
+          padding: 16px;
+        }
+        .kpi-grid {
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+        .kpi-value {
+          font-size: 20px !important;
+          word-break: break-word;
+        }
+      }
     </style>
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
   </head>
   <body>
+    <div id="sidebar-backdrop" onclick="toggleMenu(false)"></div>
     <!-- SIDEBAR -->
     <nav id="sidebar">
       <div class="sidebar-logo">
-        <h1 id="brand-name">Taqueria Pro</h1>
-        <small>Panel de Administracion</small>
+        <h1 id="brand-name">Taquería Pro</h1>
+        <small>Panel de Administración</small>
       </div>
       <div class="nav-section">Principal</div>
       <button class="nav-item active" onclick="showSection('dashboard', this)">
@@ -636,9 +837,12 @@
       <button class="nav-item" onclick="showSection('reportes', this)">
         <i class="bi bi-bar-chart-fill"></i> Reportes
       </button>
+      <button class="nav-item" onclick="showSection('contabilidad', this)">
+        <i class="bi bi-journal-check"></i> Contabilidad
+      </button>
       <div class="nav-section">Operaciones</div>
       <button class="nav-item" onclick="showSection('menu', this)">
-        <i class="bi bi-egg-fried"></i> Menu y Productos
+        <i class="bi bi-egg-fried"></i> Menú y Productos
       </button>
       <button class="nav-item" onclick="showSection('inventario', this)">
         <i class="bi bi-box-seam-fill"></i> Inventario
@@ -649,6 +853,9 @@
       <button class="nav-item" onclick="showSection('delivery', this)">
         <i class="bi bi-bicycle"></i> Domicilios
       </button>
+      <button class="nav-item" onclick="showSection('publicidad', this)">
+        <i class="bi bi-megaphone-fill"></i> Publicidad
+      </button>
       <div class="nav-section">Equipo y Clientes</div>
       <button class="nav-item" onclick="showSection('empleados', this)">
         <i class="bi bi-people-fill"></i> Empleados
@@ -658,7 +865,7 @@
       </button>
       <div class="nav-section">Sistema</div>
       <button class="nav-item" onclick="showSection('configuracion', this)">
-        <i class="bi bi-gear-fill"></i> Configuracion
+        <i class="bi bi-gear-fill"></i> Configuración
       </button>
       <div class="sidebar-bottom">
         <div class="user-chip">
@@ -686,6 +893,7 @@
     <!-- MAIN -->
     <div id="main">
       <div class="topbar">
+        <button id="menu-toggle" type="button" aria-label="Abrir menú" onclick="toggleMenu()">☰</button>
         <h2 id="page-title">Panel Principal</h2>
         <div class="badge-live">
           <div class="live-dot"></div>
@@ -701,30 +909,29 @@
         <div class="section active" id="sec-dashboard">
           <div class="kpi-grid">
             <div class="kpi-card blue">
-              <div class="kpi-label">Ventas del Dia</div>
+              <div class="kpi-label">Ventas del Día</div>
               <div class="kpi-value" id="kpi-ventas">$0</div>
               <i class="bi bi-currency-dollar kpi-icon"></i>
             </div>
             <div class="kpi-card green">
-              <div class="kpi-label">Ordenes Cerradas</div>
+              <div class="kpi-label">Órdenes Cerradas</div>
               <div class="kpi-value" id="kpi-ordenes">0</div>
               <i class="bi bi-check-circle-fill kpi-icon"></i>
             </div>
             <div class="kpi-card yellow">
-              <div class="kpi-label">Gastos del Dia</div>
+              <div class="kpi-label">Gastos del Día</div>
               <div class="kpi-value" id="kpi-gastos">$0</div>
               <i class="bi bi-receipt kpi-icon"></i>
             </div>
             <div class="kpi-card red">
-              <div class="kpi-label">Stock Critico</div>
-              <div class="kpi-value" id="kpi-stock">0 items</div>
+              <div class="kpi-label">Stock Crítico</div>
+              <div class="kpi-value" id="kpi-stock">0 productos</div>
               <i class="bi bi-exclamation-triangle-fill kpi-icon"></i>
             </div>
           </div>
           <div class="ai-card">
             <h5>
-              <i class="bi bi-cpu-fill"></i> Cerebro Taqueria Pro (IA
-              Predictiva)
+              <i class="bi bi-graph-up-arrow"></i> Análisis del día
             </h5>
             <div id="ai-insights" style="font-size: 14px; line-height: 1.8">
               Analizando datos...
@@ -733,13 +940,13 @@
           <div class="grid-2">
             <div class="card">
               <div class="section-title">
-                <i class="bi bi-bar-chart-fill"></i> Productos Mas Vendidos
+                <i class="bi bi-bar-chart-fill"></i> Productos Más Vendidos
               </div>
               <canvas id="chartProductos"></canvas>
             </div>
             <div class="card">
               <div class="section-title">
-                <i class="bi bi-pie-chart-fill"></i> Ingresos por Metodo de Pago
+                <i class="bi bi-pie-chart-fill"></i> Ingresos por Método de Pago
               </div>
               <canvas id="chartPagos"></canvas>
             </div>
@@ -748,7 +955,7 @@
             <div class="card">
               <div class="section-title">
                 <i class="bi bi-gift-fill" style="color: #ef4444"></i>
-                Cumpleanos del Mes
+                Cumpleaños del Mes
               </div>
               <div id="birthdays-dash">
                 <div class="empty-state">
@@ -770,6 +977,35 @@
         </div>
 
         <!-- REPORTES -->
+        <div class="section" id="sec-contabilidad">
+          <div class="card" style="margin-bottom: 20px">
+            <div class="section-title">
+              <i class="bi bi-calendar-check-fill" style="color: var(--accent)"></i>
+              Validación diaria
+            </div>
+            <div class="input-row" style="margin-bottom: 12px">
+              <div class="form-group">
+                <label class="form-label">Día</label
+                ><input type="date" class="form-control" id="acc-day" onchange="loadAccDay()" />
+              </div>
+            </div>
+            <div id="acc-day-body">Cargando...</div>
+          </div>
+          <div class="card">
+            <div class="section-title">
+              <i class="bi bi-calendar-month-fill" style="color: var(--accent)"></i>
+              Cierre de mes
+            </div>
+            <div class="input-row" style="margin-bottom: 12px">
+              <div class="form-group">
+                <label class="form-label">Mes</label
+                ><input type="month" class="form-control" id="acc-month" onchange="loadAccMonth()" />
+              </div>
+            </div>
+            <div id="acc-month-body">Cargando...</div>
+          </div>
+        </div>
+
         <div class="section" id="sec-reportes">
           <!-- Custom Reports UI -->
           <div class="card" style="margin-bottom: 20px">
@@ -812,7 +1048,7 @@
                   <div class="kpi-value" id="cr-total">$0</div>
                 </div>
                 <div class="kpi-card green">
-                  <div class="kpi-label">Ordenes</div>
+                  <div class="kpi-label">Órdenes</div>
                   <div class="kpi-value" id="cr-orders">0</div>
                 </div>
               </div>
@@ -834,7 +1070,7 @@
           </div>
           <div class="card" style="margin-bottom: 20px">
             <div class="section-title">
-              <i class="bi bi-graph-up-arrow"></i> Tendencia de Ventas (7 Dias)
+              <i class="bi bi-graph-up-arrow"></i> Tendencia de Ventas (7 Días)
             </div>
             <canvas id="salesChart" style="max-height: 300px"></canvas>
           </div>
@@ -858,7 +1094,7 @@
           >
             <div>
               <h3 style="font-size: 20px; font-weight: 700">
-                Menu y Productos
+                Menú y Productos
               </h3>
               <p style="color: var(--text-muted); font-size: 13px">
                 Productos activos del menu
@@ -880,7 +1116,7 @@
                   <tr>
                     <th>ID</th>
                     <th>Producto</th>
-                    <th>Categoria</th>
+                    <th>Categoría</th>
                     <th>Precio</th>
                     <th>Estado</th>
                     <th>Acciones</th>
@@ -948,7 +1184,9 @@
                   <tr>
                     <th>Item</th>
                     <th>Stock Actual</th>
-                    <th>Stock Minimo</th>
+                    <th>Mínimo</th>
+                    <th>Máximo</th>
+                    <th>A pedir</th>
                     <th>Nivel</th>
                     <th>Acciones</th>
                   </tr>
@@ -993,7 +1231,7 @@
                     <th>Cliente</th>
                     <th>Fecha/Hora</th>
                     <th>Personas</th>
-                    <th>Mesa</th>
+                    <th>Teléfono</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                   </tr>
@@ -1013,6 +1251,31 @@
         </div>
 
         <!-- DELIVERY -->
+        <div class="section" id="sec-publicidad">
+          <div class="card" style="margin-bottom: 20px">
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between">
+              <div>
+                <div class="section-title" style="margin-bottom: 4px">
+                  <i class="bi bi-megaphone-fill" style="color: var(--accent)"></i> Anuncios en pantallas
+                </div>
+                <small style="color: var(--text-muted)">
+                  Sube una imagen horizontal (ideal 1920×1080). Los cambios se guardan solos y las pantallas se actualizan en menos de 1 minuto.
+                </small>
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                <a class="btn btn-outline" href="/menu_board.html" target="_blank" rel="noopener"><i class="bi bi-tv"></i> Ver menú en TV</a>
+                <a class="btn btn-outline" href="/display.html" target="_blank" rel="noopener"><i class="bi bi-display"></i> Ver pantalla de caja</a>
+              </div>
+            </div>
+            <label class="ad-drop" for="ad-file">
+              <i class="bi bi-cloud-arrow-up-fill"></i>
+              <div><b>Toca aquí para subir una imagen</b><br /><small>PNG, JPG o WEBP</small></div>
+              <input type="file" id="ad-file" accept="image/png, image/jpeg, image/webp" onchange="uploadNewAd()" hidden />
+            </label>
+          </div>
+          <div id="ads-grid" class="ads-grid"></div>
+        </div>
+
         <div class="section" id="sec-delivery">
           <div
             style="
@@ -1038,7 +1301,7 @@
                   <tr>
                     <th>Orden</th>
                     <th>Cliente</th>
-                    <th>Direccion</th>
+                    <th>Dirección</th>
                     <th>Total</th>
                     <th>Estado</th>
                     <th>Acciones</th>
@@ -1070,12 +1333,12 @@
           >
             <div>
               <h3 style="font-size: 20px; font-weight: 700">
-                Gestion de Empleados
+                Gestión de Empleados
               </h3>
             </div>
             <button
               class="btn btn-primary"
-              onclick="openModal('modal-empleado')"
+              onclick="nuevoEmpleado()"
             >
               <i class="bi bi-person-plus-fill"></i> Nuevo Empleado
             </button>
@@ -1089,9 +1352,9 @@
                     <th>Nombre</th>
                     <th>Rol</th>
                     <th>PIN</th>
-                    <th>Cedula</th>
-                    <th>Telefono</th>
-                    <th>Cumpleanos</th>
+                    <th>Cédula</th>
+                    <th>Teléfono</th>
+                    <th>Cumpleaños</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                   </tr>
@@ -1139,7 +1402,7 @@
             <div class="card">
               <div class="section-title">
                 <i class="bi bi-gift-fill" style="color: var(--accent)"></i>
-                Emitir Tarjeta Rapida
+                Emitir Tarjeta Rápida
               </div>
               <div class="form-group">
                 <label class="form-label">Valor (COP)</label
@@ -1152,7 +1415,7 @@
                 />
               </div>
               <div class="form-group">
-                <label class="form-label">Descripcion (opcional)</label
+                <label class="form-label">Descripción (opcional)</label
                 ><input
                   type="text"
                   class="form-control"
@@ -1170,7 +1433,7 @@
             </div>
             <div class="card">
               <div class="section-title">
-                <i class="bi bi-ticket-perforated-fill"></i> Validar Codigo
+                <i class="bi bi-ticket-perforated-fill"></i> Validar Código
               </div>
               <div style="display: flex; gap: 8px; margin-bottom: 16px">
                 <input
@@ -1188,7 +1451,7 @@
                 id="gc-validate-result"
                 style="font-size: 13px; color: var(--text-muted)"
               >
-                Ingresa un codigo para validar.
+                Ingresa un código para validar.
               </div>
             </div>
           </div>
@@ -1198,7 +1461,7 @@
             </div>
             <div id="gc-history">
               <div class="empty-state">
-                <i class="bi bi-gift"></i>Los bonos emitidos apareceran aqui
+                <i class="bi bi-gift"></i>Los bonos emitidos apareceran aquí
               </div>
             </div>
           </div>
@@ -1207,7 +1470,7 @@
         <!-- CONFIGURACION -->
         <div class="section" id="sec-configuracion">
           <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 20px">
-            Configuracion del Sistema
+            Configuración del Sistema
           </h3>
           <div class="grid-2">
             <div class="card">
@@ -1243,15 +1506,6 @@
                 />
               </div>
               <div class="form-group">
-                <label class="form-label">API Key DIAN</label
-                ><input
-                  type="password"
-                  class="form-control"
-                  id="conf-dian"
-                  placeholder="Llave de la DIAN"
-                />
-              </div>
-              <div class="form-group">
                 <label class="form-label">Número WhatsApp</label
                 ><input
                   type="text"
@@ -1283,51 +1537,38 @@
                 />
                 <input type="hidden" id="conf-logo-url" />
               </div>
+              <div class="form-group">
+                <label class="form-label">Tarifas de domicilio por recorrido</label>
+                <small style="color: var(--text-muted); display: block; margin-bottom: 8px">
+                  El cliente elige su zona al pedir y la caja puede ajustar el valor. Este dinero es el pago del domiciliario.
+                </small>
+                <div id="zones-editor"></div>
+                <button type="button" class="btn btn-sm btn-outline" style="margin-top: 6px" onclick="addZoneRow()">
+                  <i class="bi bi-plus-lg"></i> Agregar zona
+                </button>
+              </div>
               <button
                 class="btn btn-primary"
                 style="width: 100%"
                 onclick="saveBranding()"
               >
-                <i class="bi bi-floppy-fill"></i> Guardar Configuracion
+                <i class="bi bi-floppy-fill"></i> Guardar Configuración
               </button>
             </div>
             <div class="card">
               <div class="section-title">
-                <i class="bi bi-display"></i> Publicidad en Pantalla (CFD)
+                <i class="bi bi-megaphone-fill"></i> Publicidad en pantallas
               </div>
-              <p
-                style="
-                  color: var(--text-muted);
-                  font-size: 13px;
-                  margin-bottom: 16px;
-                "
-              >
-                Sube imágenes para mostrar a los clientes en la pantalla
-                secundaria.
+              <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px">
+                Los anuncios del menú en TV y de la pantalla de caja ahora se manejan en su propia sección.
               </p>
-              <div class="form-group">
-                <input
-                  type="file"
-                  class="form-control"
-                  id="conf-ad-file"
-                  accept="image/*"
-                  onchange="uploadAdImage()"
-                />
-              </div>
-              <div
-                id="ad-images-container"
-                style="
-                  display: flex;
-                  gap: 10px;
-                  overflow-x: auto;
-                  padding-bottom: 10px;
-                "
-              ></div>
-              <input type="hidden" id="conf-ad-images" value="[]" />
+              <button class="btn btn-primary" onclick="goSection('publicidad')">
+                <i class="bi bi-arrow-right-circle-fill"></i> Ir a Publicidad
+              </button>
             </div>
             <div class="card">
               <div class="section-title">
-                <i class="bi bi-qr-code"></i> Generacion de QRs
+                <i class="bi bi-qr-code"></i> Generación de QRs
               </div>
               <p
                 style="
@@ -1339,7 +1580,7 @@
                 Genera QRs para que los clientes ordenen desde la mesa.
               </p>
               <div class="form-group">
-                <label class="form-label">Numero de Mesas</label
+                <label class="form-label">Número de Mesas</label
                 ><input
                   type="number"
                   class="form-control"
@@ -1380,34 +1621,69 @@
                 Local
               </button>
             </div>
+            <!-- ===== INTEGRACIONES ===== -->
             <div class="card">
               <div class="section-title">
-                <i class="bi bi-diagram-3-fill" style="color: #06b6d4"></i>
-                Franquicia y Sincronizacion
+                <i class="bi bi-receipt-cutoff" style="color: #f59e0b"></i> Facturación electrónica DIAN
               </div>
-              <div
-                style="
-                  display: flex;
-                  align-items: center;
-                  gap: 8px;
-                  margin-bottom: 12px;
-                "
-              >
-                <span class="badge badge-success"
-                  ><i class="bi bi-wifi"></i> Online</span
-                ><span style="font-size: 12px; color: var(--text-muted)"
-                  >Ultima sync: <span id="last-sync-time">Nunca</span></span
-                >
+              <label class="int-switch"><input type="checkbox" id="int-dian-enabled" />
+                <span>Activar facturación electrónica</span></label>
+              <small class="int-help">Mientras esté apagada, el botón de factura no aparece en caja. La DIAN solo acepta facturas emitidas
+                por un proveedor tecnológico autorizado: al activarla, indica cuál es el tuyo.</small>
+              <div class="form-group"><label class="form-label">Proveedor tecnológico</label>
+                <input class="form-control" id="int-dian-provider" placeholder="Ej: Alegra, Siigo, Factus" /></div>
+              <div class="form-group"><label class="form-label">Llave del proveedor <span class="int-set" id="int-dian-key-set"></span></label>
+                <input class="form-control" type="password" id="int-dian-key" placeholder="Déjala vacía para no cambiarla" autocomplete="new-password" /></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">
+                <i class="bi bi-diagram-3-fill" style="color: #06b6d4"></i> Sucursales y servidor maestro
               </div>
-              <button
-                id="btn-sync"
-                class="btn btn-outline"
-                style="width: 100%"
-                onclick="syncToMaster()"
-              >
-                <i class="bi bi-arrow-repeat"></i> Sincronizar Ahora
+              <small class="int-help">Esta sede envía sus ventas cerradas al servidor maestro. Solo se envía lo pendiente y el maestro confirma
+                cada orden recibida. En el maestro estas ventas aparecen por sucursal y no se mezclan con su caja.</small>
+              <div class="form-group"><label class="form-label">Dirección del servidor maestro</label>
+                <input class="form-control" id="int-master-url" placeholder="https://central.mitaqueria.com" /></div>
+              <div class="form-group"><label class="form-label">API key del maestro <span class="int-set" id="int-master-key-set"></span></label>
+                <input class="form-control" type="password" id="int-master-key" placeholder="Déjala vacía para no cambiarla" autocomplete="new-password" /></div>
+              <label class="int-switch"><input type="checkbox" id="int-sync-enabled" />
+                <span>Enviar automáticamente cada 5 minutos</span></label>
+              <div class="int-status" id="int-sync-status">Sin sincronizaciones todavía.</div>
+              <button id="btn-sync" class="btn btn-outline" style="width: 100%" onclick="syncToMaster()">
+                <i class="bi bi-arrow-repeat"></i> Sincronizar ahora
               </button>
             </div>
+
+            <div class="card">
+              <div class="section-title">
+                <i class="bi bi-credit-card-2-front-fill" style="color: #10b981"></i> Pagos en línea (Wompi)
+              </div>
+              <small class="int-help">Con Wompi activo, el cliente puede pagar su cuenta desde el celular (tarjeta, PSE, Nequi). La orden se cierra
+                sola cuando Wompi confirma el pago con su firma. Las llaves están en tu panel de Wompi → Desarrolladores.</small>
+              <label class="int-switch"><input type="checkbox" id="int-wompi-enabled" /> <span>Activar pagos en línea</span></label>
+              <div class="form-group"><label class="form-label">Ambiente</label>
+                <select class="form-select" id="int-wompi-env">
+                  <option value="production">Producción (cobros reales)</option>
+                  <option value="sandbox">Pruebas (sandbox)</option>
+                </select></div>
+              <div class="form-group"><label class="form-label">Llave pública</label>
+                <input class="form-control" id="int-wompi-pub" placeholder="pub_prod_..." /></div>
+              <div class="form-group"><label class="form-label">Secreto de integridad <span class="int-set" id="int-wompi-int-set"></span></label>
+                <input class="form-control" type="password" id="int-wompi-int" placeholder="Déjalo vacío para no cambiarlo" autocomplete="new-password" /></div>
+              <div class="form-group"><label class="form-label">Secreto de eventos <span class="int-set" id="int-wompi-ev-set"></span></label>
+                <input class="form-control" type="password" id="int-wompi-ev" placeholder="Déjalo vacío para no cambiarlo" autocomplete="new-password" /></div>
+              <div class="form-group"><label class="form-label">Dirección pública del sistema</label>
+                <input class="form-control" id="int-public-url" placeholder="https://mitaqueria.com" /></div>
+              <div class="int-status">URL de eventos para registrar en Wompi:<br /><code id="int-webhook-url"></code></div>
+            </div>
+
+            <div class="card">
+              <button class="btn btn-primary" style="width: 100%" onclick="saveIntegrations()">
+                <i class="bi bi-shield-check"></i> Guardar integraciones
+              </button>
+              <small class="int-help" style="margin-top: 8px">Las llaves se guardan en el servidor y nunca se muestran de nuevo.</small>
+            </div>
+
             <div class="card">
               <div class="section-title">
                 <i class="bi bi-link-45deg"></i> URLs del Sistema
@@ -1715,13 +1991,17 @@
             </div>
           </div>
           <div class="form-group">
-            <label>ID de Categoría (Opcional)</label>
-            <input
-              type="number"
-              id="np-cat"
-              class="form-control"
-              placeholder="Ej. 1"
-            />
+            <label>Categoría</label>
+            <select id="np-cat" class="form-select cat-select">
+              <option value="">Sin categoría</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">¿Es premio de fidelización?</label>
+            <select id="np-is-reward" class="form-select">
+              <option value="0">No</option>
+              <option value="1">Sí — el cliente lo puede reclamar gratis con 10 compras</option>
+            </select>
           </div>
           <button
             class="btn btn-primary"
@@ -1752,8 +2032,17 @@
             <input type="number" id="ep-price" class="form-control" />
           </div>
           <div class="form-group">
-            <label>ID de Categoría (Opcional)</label>
-            <input type="number" id="ep-cat" class="form-control" />
+            <label>Categoría</label>
+            <select id="ep-cat" class="form-select cat-select">
+              <option value="">Sin categoría</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">¿Es premio de fidelización?</label>
+            <select id="ep-is-reward" class="form-select">
+              <option value="0">No</option>
+              <option value="1">Sí — el cliente lo puede reclamar gratis con 10 compras</option>
+            </select>
           </div>
           <button
             class="btn btn-primary"
@@ -1807,8 +2096,9 @@
               class="bi bi-person-plus-fill"
               style="color: var(--primary)"
             ></i>
-            Nuevo Empleado</span
+            <span id="emp-modal-title">Nuevo Empleado</span></span
           ><button class="modal-close" onclick="closeModal('modal-empleado')">
+            <input type="hidden" id="emp-id" />
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
@@ -1853,7 +2143,7 @@
             />
           </div>
           <div class="form-group">
-            <label class="form-label">Contrasena</label
+            <label class="form-label">Contraseña</label
             ><input
               type="password"
               class="form-control"
@@ -1864,7 +2154,7 @@
         </div>
         <div class="input-row">
           <div class="form-group">
-            <label class="form-label">Cedula</label
+            <label class="form-label">Cédula</label
             ><input
               type="text"
               class="form-control"
@@ -1873,7 +2163,7 @@
             />
           </div>
           <div class="form-group">
-            <label class="form-label">Telefono</label
+            <label class="form-label">Teléfono</label
             ><input
               type="text"
               class="form-control"
@@ -1886,6 +2176,7 @@
           <div class="form-group">
             <label class="form-label">Rol</label
             ><select class="form-select" id="emp-role">
+              <option value="domiciliario">Domiciliario</option>
               <option value="cajero">Cajero</option>
               <option value="mesero">Mesero</option>
               <option value="cocina">Cocina</option>
@@ -1893,7 +2184,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Cumpleanos</label
+            <label class="form-label">Cumpleaños</label
             ><input type="date" class="form-control" id="emp-birth" />
           </div>
         </div>
@@ -1912,7 +2203,7 @@
             style="flex: 1"
             onclick="crearEmpleado()"
           >
-            <i class="bi bi-check-lg"></i> Crear Empleado</button
+            <i class="bi bi-check-lg"></i> <span id="emp-save-label">Crear Empleado</span></button
           ><button
             class="btn btn-outline"
             onclick="closeModal('modal-empleado')"
@@ -1950,6 +2241,16 @@
             class="form-control"
             id="new-item-min"
             placeholder="Ej: 10"
+            min="0"
+          />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stock Máximo (Reposición)</label
+          ><input
+            type="number"
+            class="form-control"
+            id="new-item-max"
+            placeholder="Ej: 45"
             min="0"
           />
         </div>
@@ -2127,10 +2428,16 @@
           />
         </div>
         <div class="form-group">
+          <small style="color: var(--text-muted); display: block; margin-bottom: 6px">
+            Las ventas en efectivo se hacen desde la caja (botón "Vender Bono") para que el dinero cuadre en el arqueo.
+          </small>
           <label class="form-label">Tipo de Bono</label
           ><select class="form-control" id="gc-modal-type">
-            <option value="CUSTOMER">Venta a Cliente (Pagado)</option>
-            <option value="EMPLOYEE">Regalo a Empleado (Cortesía)</option>
+            <option value="EMPLOYEE">Cortesía / regalo (no entra dinero, es consumo en el local)</option>
+            <option value="SALE:transferencia">Venta pagada por transferencia</option>
+            <option value="SALE:tarjeta">Venta pagada con tarjeta</option>
+            <option value="SALE:nequi">Venta pagada por Nequi</option>
+            <option value="SALE:daviplata">Venta pagada por Daviplata</option>
           </select>
         </div>
         <div class="form-group">
@@ -2181,20 +2488,16 @@
             document.getElementById("conf-color").value =
               d.theme_color || "#10b981";
             document.getElementById("conf-branch").value = d.branch_id || "";
-            document.getElementById("conf-dian").value = d.dian_api_key || "";
             document.getElementById("conf-whatsapp").value =
               d.whatsapp_number || "";
         if(document.getElementById("conf-loyalty-enabled")) document.getElementById("conf-loyalty-enabled").checked = d.loyalty_enabled !== false;
+            fetch("/api/delivery/zones").then((r) => r.json()).then(renderZones).catch(() => renderZones([]));
             if (d.logo_url) {
               document.getElementById("conf-logo-url").value = d.logo_url;
               const preview = document.getElementById("logo-preview");
               preview.src = d.logo_url;
               preview.style.display = "block";
             }
-            document.getElementById("conf-ad-images").value = JSON.stringify(
-              d.ad_images || [],
-            );
-            renderAdImages();
           })
           .catch(() => {});
         loadDashboard();
@@ -2203,7 +2506,15 @@
         setInterval(loadDashboard, 60000);
       };
 
+      function toggleMenu(force) {
+        const sb = document.getElementById("sidebar");
+        const open = typeof force === "boolean" ? force : !sb.classList.contains("open");
+        sb.classList.toggle("open", open);
+        document.getElementById("sidebar-backdrop").classList.toggle("open", open);
+      }
+
       function showSection(id, btn) {
+        toggleMenu(false);
         document
           .querySelectorAll(".section")
           .forEach((s) => s.classList.remove("active"));
@@ -2215,25 +2526,312 @@
         const t = {
           dashboard: "Panel Principal",
           reportes: "Reportes",
-          menu: "Menu y Productos",
+          contabilidad: "Contabilidad",
+          menu: "Menú y Productos",
           inventario: "Inventario",
           reservaciones: "Reservaciones",
           delivery: "Domicilios",
+          publicidad: "Publicidad",
           empleados: "Empleados",
           giftcards: "Tarjetas de Regalo y Bonos",
-          configuracion: "Configuracion",
+          configuracion: "Configuración",
         };
         document.getElementById("page-title").textContent = t[id] || id;
         const L = {
           reportes: loadReportes,
+          contabilidad: loadContabilidad,
           menu: loadMenu,
           inventario: loadInventario,
           reservaciones: loadReservaciones,
           delivery: loadDelivery,
+          publicidad: loadAds,
+          configuracion: loadIntegrations,
           empleados: loadEmpleados,
           giftcards: loadGCH,
         };
         if (L[id]) L[id]();
+      }
+
+      // Mensaje de error legible a partir de la respuesta del servidor
+      const CAMPOS = { pin: "PIN", password: "contraseña", username: "usuario", phone: "teléfono", customer_phone: "teléfono",
+        price_cop: "precio", name: "nombre", qty: "cantidad", amount: "monto", value_cop: "valor", stock_min: "mínimo",
+        stock_max: "máximo", res_date: "fecha", res_time: "hora", guests: "personas", role: "rol" };
+      async function errMsg(r, fallback) {
+        try {
+          const d = await r.clone().json();
+          if (typeof d.detail === "string") return d.detail;
+          if (Array.isArray(d.detail) && d.detail.length) {
+            const campos = [...new Set(d.detail.map((e) => CAMPOS[e.loc[e.loc.length - 1]] || e.loc[e.loc.length - 1]))];
+            return "Revisa estos datos: " + campos.join(", ");
+          }
+        } catch (e) {}
+        if (r.status === 401) return "Tu sesión expiró. Vuelve a iniciar sesión.";
+        if (r.status === 403) return "No tienes permiso para hacer esto.";
+        return fallback;
+      }
+
+      // CONTABILIDAD: validación diaria y cierre de mes
+      const COP = (n) => "$" + Math.round(n || 0).toLocaleString("es-CO");
+      const escHtml = (t) =>
+        String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      const diffHtml = (d) => {
+        if (Math.abs(d || 0) <= 1) return '<span style="color:#10b981;font-weight:700">Cuadrado</span>';
+        const col = d > 0 ? "#f59e0b" : "#ef4444";
+        return `<span style="color:${col};font-weight:700">${d > 0 ? "Sobrante" : "Faltante"} ${COP(Math.abs(d))}</span>`;
+      };
+      const METODO = { efectivo: "Efectivo", tarjeta: "Tarjeta", transferencia: "Transferencia", nequi: "Nequi",
+        daviplata: "Daviplata", puntos: "Puntos", bono: "Bono / tarjeta de regalo", donacion: "Donación", mixto: "Mixto",
+        online: "Pago en línea", sin_definir: "Sin definir" };
+      const fmtDia = (ymd) =>
+        new Date(ymd + "T12:00:00").toLocaleDateString("es-CO", { weekday: "short", day: "numeric", month: "short" });
+      const fmtFecha = (iso) =>
+        new Date(iso).toLocaleString("es-CO", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+      const kpi = (label, value, extra = "") =>
+        `<div><div class="form-label">${label}</div><div style="font-size:22px;font-weight:800">${value}</div>${extra}</div>`;
+
+      function loadContabilidad() {
+        const now = new Date();
+        const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+        const dEl = document.getElementById("acc-day");
+        const mEl = document.getElementById("acc-month");
+        if (!dEl.value) dEl.value = local.slice(0, 10);
+        if (!mEl.value) mEl.value = local.slice(0, 7);
+        loadAccDay();
+        loadAccMonth();
+      }
+
+      async function loadAccDay() {
+        const day = document.getElementById("acc-day").value;
+        const box = document.getElementById("acc-day-body");
+        const r = await fetch("/api/accounting/daily?day=" + day, { headers: AUTH() });
+        const d = await r.json();
+        if (!r.ok) {
+          box.textContent = d.detail || "Error";
+          return;
+        }
+        const metodos =
+          Object.entries(d.sales_by_method)
+            .map(([m, v]) => `<div>${escHtml(METODO[m] || m)}: <b>${COP(v)}</b></div>`)
+            .join("") || "<div>Sin ventas</div>";
+        const turnos = d.shifts
+          .map((s) => {
+            const abierto = s.status === "open";
+            return `<tr><td>#${s.id}</td><td>${escHtml(s.cashier || "-")}</td><td>${COP(s.base_cash)}</td>
+              <td>${abierto ? "-" : COP(s.expected_cash)}</td><td>${abierto ? "-" : COP(s.actual_cash)}</td>
+              <td>${abierto ? '<span class="badge badge-warning">Abierto</span>' : diffHtml(s.difference)}</td></tr>`;
+          })
+          .join("");
+        const alertas = d.alerts.length
+          ? `<div class="alert-banner"><i class="bi bi-exclamation-triangle-fill" style="color:var(--warning)"></i><div>${d.alerts.map(escHtml).join("<br>")}</div></div>`
+          : "";
+        const v = d.validated;
+        const sinMovimientos = !d.orders && !d.shifts.length && !d.total_expenses;
+        if (sinMovimientos && !v) {
+          box.innerHTML = `<div class="empty-state" style="padding:24px"><i class="bi bi-calendar-x"></i>
+            Este día no tiene ventas, turnos de caja ni egresos. No hay nada que validar.</div>`;
+          return;
+        }
+        const validado = v
+          ? `<div style="color:#10b981;font-weight:700;margin-top:12px"><i class="bi bi-check-circle-fill"></i> Validado por ${escHtml(v.validated_by)} el ${fmtFecha(v.validated_at)}${v.notes ? " — " + escHtml(v.notes) : ""}</div>`
+          : `<div style="margin-top:12px"><input class="form-control" id="acc-day-notes" placeholder="Observaciones (obligatorio si hay descuadre)" style="margin-bottom:8px" />
+             <button class="btn btn-primary" onclick="validateAccDay()"><i class="bi bi-check2-square"></i> Validar contabilidad del día</button></div>`;
+        const tabla = d.shifts.length
+          ? `<div style="overflow-x:auto"><table><thead><tr><th>Turno</th><th>Cajero</th><th>Base</th><th>Esperado</th><th>Contado</th><th>Resultado</th></tr></thead><tbody>${turnos}</tbody></table></div>`
+          : "<div>No hubo turnos de caja este día.</div>";
+        box.innerHTML = `${alertas}
+          <div class="input-row" style="gap:24px;margin-bottom:12px;flex-wrap:wrap">
+            ${kpi("Ventas", COP(d.total_sales), `<small>${d.orders} órdenes</small>`)}
+            ${kpi("Propinas del día", `<span style="color:var(--accent)">${COP(d.total_tips)}</span>`)}
+            ${kpi("Egresos", COP(d.total_expenses))}
+            ${kpi("Domicilios (pago a domiciliarios)", COP(d.total_delivery_fees))}
+            ${kpi("Descuadre", diffHtml(d.difference))}
+          </div>
+          <div class="input-row" style="gap:24px;margin-bottom:12px;flex-wrap:wrap">
+            ${kpi("Bonos vendidos", COP(d.gift_cards_sold_total), Object.entries(d.gift_cards_sold || {}).length
+              ? `<small>${Object.entries(d.gift_cards_sold).map(([m, v]) => escHtml(METODO[m] || m) + " " + COP(v)).join(" · ")}</small>` : "")}
+            ${kpi("Pagado con bonos", COP(d.vouchers_used), "<small>No es efectivo: ya se cobró al vender el bono o es cortesía</small>")}
+            ${kpi("Premios de fidelización", String(d.rewards_given || 0), `<small>valor ${COP(d.rewards_value)}</small>`)}
+            ${kpi("Donaciones", String(d.donations || 0), `<small>valor de referencia ${COP(d.donations_value)}</small>`)}
+          </div>
+          ${(d.delivery_by_driver || []).length ? `<div style="margin-bottom:12px"><div class="form-label">Pago por domiciliario</div>${d.delivery_by_driver
+            .map((x) => `<div>${escHtml(x.driver)}: <b>${COP(x.fees)}</b> <small>(${x.deliveries} ${x.deliveries === 1 ? "entrega" : "entregas"})</small></div>`)
+            .join("")}</div>` : ""}
+          <div style="margin-bottom:12px">${metodos}</div>
+          ${tabla}
+          ${validado}`;
+      }
+
+      async function validateAccDay() {
+        const day = document.getElementById("acc-day").value;
+        const notes = document.getElementById("acc-day-notes").value;
+        const r = await fetch(`/api/accounting/daily/${day}/validate`, {
+          method: "POST",
+          headers: AUTH(),
+          body: JSON.stringify({ notes }),
+        });
+        const d = await r.json();
+        if (r.ok) {
+          toast("Día validado");
+          loadAccDay();
+          loadAccMonth();
+        } else toast(d.detail || "No se pudo validar", "error");
+      }
+
+      function openAccDay(day) {
+        document.getElementById("acc-day").value = day;
+        loadAccDay();
+      }
+
+      async function loadAccMonth() {
+        const month = document.getElementById("acc-month").value;
+        const box = document.getElementById("acc-month-body");
+        const r = await fetch("/api/accounting/monthly?month=" + month, { headers: AUTH() });
+        const d = await r.json();
+        if (!r.ok) {
+          box.textContent = d.detail || "Error";
+          return;
+        }
+        const filas = d.days
+          .map(
+            (x) => `<tr style="cursor:pointer" onclick="openAccDay('${x.date}')">
+              <td style="white-space:nowrap;font-weight:600">${fmtDia(x.date)}</td><td>${COP(x.total_sales)}</td><td>${COP(x.total_tips)}</td><td>${COP(x.total_expenses)}</td>
+              <td>${diffHtml(x.difference)}</td>
+              <td>${x.validated ? '<i class="bi bi-check-circle-fill" style="color:#10b981"></i>' : '<span class="badge badge-warning">Pendiente</span>'}</td></tr>`,
+          )
+          .join("");
+        let pie;
+        if (d.closed)
+          pie = `<div style="color:#10b981;font-weight:700"><i class="bi bi-lock-fill"></i> Mes cerrado por ${escHtml(d.closed.validated_by)} el ${fmtFecha(d.closed.validated_at)}</div>`;
+        else if (d.pending_days.length)
+          pie = `<div class="alert-banner"><i class="bi bi-hourglass-split" style="color:var(--warning)"></i> Faltan ${d.pending_days.length === 1 ? "1 día" : d.pending_days.length + " días"} por validar antes del cierre. Toca un día de la tabla para revisarlo.</div>`;
+        else if (d.can_close)
+          pie = `<button class="btn btn-primary" onclick="closeAccMonth()"><i class="bi bi-lock"></i> Hacer cierre de mes</button>`;
+        else pie = "<div>No hay movimientos este mes.</div>";
+        const tabla = d.days.length
+          ? `<div style="overflow-x:auto"><table><thead><tr><th>Día</th><th>Ventas</th><th>Propinas</th><th>Egresos</th><th>Descuadre</th><th>Validado</th></tr></thead><tbody>${filas}</tbody></table></div>`
+          : "";
+        box.innerHTML = `<div class="input-row" style="gap:24px;margin-bottom:12px;flex-wrap:wrap">
+            ${kpi("Ventas del mes", COP(d.total_sales))}
+            ${kpi("Propinas del mes", `<span style="color:var(--accent)">${COP(d.total_tips)}</span>`)}
+            ${kpi("Egresos", COP(d.total_expenses))}
+            ${kpi("Descuadre acumulado", diffHtml(d.difference), `<small>${d.days_with_difference.length === 1 ? "1 día" : d.days_with_difference.length + " días"} con descuadre</small>`)}
+          </div>
+          ${tabla}
+          ${pie}`;
+      }
+
+      async function closeAccMonth() {
+        const month = document.getElementById("acc-month").value;
+        if (!confirm("¿Cerrar el mes " + month + "? Esta acción no se puede deshacer.")) return;
+        const r = await fetch(`/api/accounting/monthly/${month}/close`, {
+          method: "POST",
+          headers: AUTH(),
+          body: JSON.stringify({ notes: "" }),
+        });
+        const d = await r.json();
+        if (r.ok) {
+          toast("Mes cerrado");
+          loadAccMonth();
+        } else toast(d.detail || "No se pudo cerrar", "error");
+      }
+
+      function goSection(id) {
+        const btn = [...document.querySelectorAll(".nav-item")].find((x) => (x.getAttribute("onclick") || "").includes("'" + id + "'"));
+        showSection(id, btn);
+      }
+
+      // ===== PUBLICIDAD =====
+      let adsData = [];
+      async function loadAds() {
+        try {
+          adsData = await (await fetch("/api/ads?all=true")).json();
+        } catch (e) {
+          adsData = [];
+        }
+        const g = document.getElementById("ads-grid");
+        if (!adsData.length) {
+          g.innerHTML = '<div class="card"><div class="empty-state"><i class="bi bi-image"></i>Todavía no hay anuncios. Sube la primera imagen arriba.</div></div>';
+          return;
+        }
+        g.innerHTML = adsData
+          .map((a, i) => `
+          <div class="ad-card ${a.active ? "" : "off"}">
+            <div class="ad-thumb" style="background-image:url('${escHtml(a.image_url)}')">
+              ${a.is_promo ? '<span class="promo-tag">PROMO</span>' : ""}
+              <div class="ad-preview-text">${escHtml(a.title || "")}<small>${escHtml(a.price_text || "")}</small></div>
+            </div>
+            <div class="ad-body">
+              <input class="form-control" placeholder="Título (ej: Martes de tacos)" value="${escHtml(a.title || "")}"
+                onchange="saveAd(${a.id}, {title: this.value})" />
+              <input class="form-control" placeholder="Precio o mensaje (ej: 3 tacos por $20.000)" value="${escHtml(a.price_text || "")}"
+                onchange="saveAd(${a.id}, {price_text: this.value})" />
+              <div class="ad-row">
+                <select class="form-select" onchange="saveAd(${a.id}, {screen: this.value})" title="¿Dónde se muestra?">
+                  <option value="ambas" ${a.screen === "ambas" ? "selected" : ""}>📺 TV y caja</option>
+                  <option value="tv" ${a.screen === "tv" ? "selected" : ""}>📺 Solo menú en TV</option>
+                  <option value="caja" ${a.screen === "caja" ? "selected" : ""}>🖥️ Solo pantalla de caja</option>
+                </select>
+                <select class="form-select" style="max-width:110px" onchange="saveAd(${a.id}, {duration: parseInt(this.value)})" title="Duración en pantalla">
+                  ${[5, 8, 12, 20, 30].map((d) => `<option value="${d}" ${a.duration === d ? "selected" : ""}>${d} seg</option>`).join("")}
+                </select>
+              </div>
+              <div class="ad-row" style="justify-content:space-between">
+                <label><input type="checkbox" ${a.is_promo ? "checked" : ""} onchange="saveAd(${a.id}, {is_promo: this.checked})" /> Promoción</label>
+                <label><input type="checkbox" ${a.active ? "checked" : ""} onchange="saveAd(${a.id}, {active: this.checked})" /> Visible</label>
+                <div style="display:flex;gap:4px">
+                  <button class="btn btn-sm btn-outline" title="Mover antes" ${i === 0 ? "disabled" : ""} onclick="moveAd(${i}, -1)"><i class="bi bi-arrow-left"></i></button>
+                  <button class="btn btn-sm btn-outline" title="Mover después" ${i === adsData.length - 1 ? "disabled" : ""} onclick="moveAd(${i}, 1)"><i class="bi bi-arrow-right"></i></button>
+                  <button class="btn btn-sm btn-danger" title="Eliminar anuncio" onclick="deleteAd(${a.id})"><i class="bi bi-trash3-fill"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>`)
+          .join("");
+      }
+
+      async function saveAd(id, changes) {
+        const a = adsData.find((x) => x.id === id);
+        if (!a) return;
+        const body = { title: a.title, image_url: a.image_url, price_text: a.price_text, is_promo: !!a.is_promo,
+          duration: a.duration || 8, active: !!a.active, screen: a.screen || "ambas", ...changes };
+        const r = await fetch("/api/ads/" + id, { method: "PUT", headers: AUTH(), body: JSON.stringify(body) });
+        if (r.ok) {
+          toast("Anuncio guardado");
+          loadAds();
+        } else toast(await errMsg(r, "No se pudo guardar el anuncio"), "error");
+      }
+
+      async function uploadNewAd() {
+        const input = document.getElementById("ad-file");
+        if (!input.files || !input.files[0]) return;
+        const f = new FormData();
+        f.append("file", input.files[0]);
+        toast("Subiendo imagen…", "info");
+        const up = await fetch("/api/upload_image", { method: "POST", headers: { Authorization: AUTH().Authorization }, body: f });
+        input.value = "";
+        if (!up.ok) return toast(await errMsg(up, "No se pudo subir la imagen"), "error");
+        const { url } = await up.json();
+        const r = await fetch("/api/ads", { method: "POST", headers: AUTH(), body: JSON.stringify({ image_url: url, duration: 8, screen: "ambas" }) });
+        if (r.ok) {
+          toast("Anuncio agregado. Escríbele un título y un precio si quieres.");
+          loadAds();
+        } else toast(await errMsg(r, "No se pudo crear el anuncio"), "error");
+      }
+
+      async function moveAd(i, dir) {
+        const ids = adsData.map((a) => a.id);
+        [ids[i], ids[i + dir]] = [ids[i + dir], ids[i]];
+        await fetch("/api/ads/reorder", { method: "POST", headers: AUTH(), body: JSON.stringify({ ids }) });
+        loadAds();
+      }
+
+      async function deleteAd(id) {
+        if (!confirm("¿Eliminar este anuncio de las pantallas?")) return;
+        const r = await fetch("/api/ads/" + id, { method: "DELETE", headers: AUTH() });
+        if (r.ok) {
+          toast("Anuncio eliminado");
+          loadAds();
+        } else toast(await errMsg(r, "No se pudo eliminar"), "error");
       }
 
       async function downloadBackup() {
@@ -2300,7 +2898,7 @@
           tbody.innerHTML = "";
           if (data.items && data.items.length > 0) {
             data.items.forEach((i) => {
-              tbody.innerHTML += `<tr><td>${i.product_name}</td><td>${i.qty}</td></tr>`;
+              tbody.innerHTML += `<tr><td>${escHtml(i.product_name)}</td><td>${i.qty}</td></tr>`;
             });
           } else {
             tbody.innerHTML =
@@ -2313,14 +2911,16 @@
 
       function exportCustomReportCSV() {
         if (!customReportData) return;
-        let csv = "Producto,Cantidad Vendida\\n";
+        // Separador ";" y BOM para que Excel en español lo abra en columnas y con tildes
+        const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+        let csv = "Producto;Cantidad vendida\n";
         customReportData.items.forEach((i) => {
-          csv += `${i.product_name},${i.qty}\\n`;
+          csv += `${q(i.product_name)};${i.qty}\n`;
         });
-        csv += `\\nTotal Ventas,${customReportData.total}\\n`;
-        csv += `Total Ordenes,${customReportData.orders}\\n`;
+        csv += `\nTotal ventas;${customReportData.total}\n`;
+        csv += `Total órdenes;${customReportData.orders}\n`;
 
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -2343,7 +2943,7 @@
           document.getElementById("kpi-gastos").textContent =
             "$" + (d.total_expenses || 0).toLocaleString("es-CO");
           document.getElementById("kpi-stock").textContent =
-            (d.low_stock || []).length + " items";
+            (d.low_stock || []).length + ((d.low_stock || []).length === 1 ? " producto" : " productos");
           const ins = d.ai_insights || ["Sin datos aun"];
           document.getElementById("ai-insights").innerHTML = ins
             .map(
@@ -2425,19 +3025,19 @@
                 .map(
                   (b) =>
                     '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.07)"><div style="width:36px;height:36px;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">&#x1F382;</div><div><div style="font-size:13px;font-weight:600">' +
-                    (b.first_name || "") +
+                    escHtml(b.first_name || b.username || "") +
                     " " +
-                    (b.last_name || "") +
+                    escHtml(b.last_name || "") +
                     '</div><div style="font-size:11px;color:#94a3b8">' +
-                    (b.birth_date || "") +
-                    '</div></div><button class="btn btn-sm btn-danger" style="margin-left:auto" onclick="issueBirthdayBonus(' +
+                    (b.birth_date ? "Cumple el " + new Date(b.birth_date + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long" }) : "") +
+                    '</div></div><button class="btn btn-sm btn-danger" style="margin-left:auto" title="Dar bono de cumpleaños" onclick="issueBirthdayBonus(' +
                     b.id +
                     ",'" +
                     b.first_name +
                     '\')"><i class="bi bi-gift-fill"></i></button></div>',
                 )
                 .join("")
-            : '<div class="empty-state"><i class="bi bi-balloon"></i>No hay cumpleanos este mes</div>';
+            : '<div class="empty-state"><i class="bi bi-balloon"></i>No hay cumpleaños este mes</div>';
           const ad = document.getElementById("attendance-dash");
           ad.innerHTML = (d.attendance || []).length
             ? (d.attendance || [])
@@ -2557,6 +3157,18 @@
           const r = await fetch("/menu?_t=" + new Date().getTime(), { headers: AUTH() });
           if (!r.ok) throw new Error();
           const items = await r.json();
+          let catNames = {};
+          try {
+            const cr = await fetch("/api/categories");
+            (await cr.json()).forEach((c) => (catNames[c.id] = c.name));
+            const opts = '<option value="">Sin categoría</option>' +
+              Object.entries(catNames).map(([id, n]) => `<option value="${id}">${escHtml(n)}</option>`).join("");
+            document.querySelectorAll(".cat-select").forEach((sel) => {
+              const keep = sel.value;
+              sel.innerHTML = opts;
+              sel.value = keep;
+            });
+          } catch (e) {}
           const b = document.getElementById("menu-tbody");
           if (!items.length) {
             b.innerHTML =
@@ -2569,9 +3181,9 @@
                 '<tr><td><span class="badge badge-primary">#' +
                 p.id +
                 '</span></td><td style="font-weight:600">' +
-                p.name +
-                '</td><td><span class="badge badge-warning">Cat ' +
-                (p.category_id || "N/A") +
+                escHtml(p.name) +
+                '</td><td><span class="badge badge-warning">' +
+                escHtml(catNames[p.category_id] || "Sin categoría") +
                 '</span></td><td style="color:var(--accent);font-weight:700">$' +
                 (p.price_cop || 0).toLocaleString("es-CO") +
                 '</td><td><span class="badge badge-success"><i class="bi bi-check-circle-fill"></i> Activo</span></td><td><button class="btn btn-sm btn-outline" style="color:var(--info);border-color:var(--info);margin-right:5px" onclick="editProduct(' +
@@ -2699,7 +3311,7 @@
             toast("Producto actualizado");
             closeModal("modal-edit-product");
             loadMenu();
-          } else toast("Error al actualizar", "error");
+          } else toast(await errMsg(r, "Error al actualizar"), "error");
         } catch (e) {
           toast("Error de conexión", "error");
         }
@@ -2716,7 +3328,7 @@
           if (r.ok) {
             toast("Producto eliminado");
             loadMenu();
-          } else toast("Error al eliminar", "error");
+          } else toast(await errMsg(r, "Error al eliminar"), "error");
         } catch (e) {
           toast("Error de conexión", "error");
         }
@@ -2740,7 +3352,7 @@
             s.innerHTML = invItems
               .map(
                 (i) =>
-                  `<option value="${i.id}">${i.name} (${i.inventory_type})</option>`,
+                  `<option value="${i.id}">${escHtml(i.name)} (${escHtml(i.inventory_type)})</option>`,
               )
               .join("");
           }
@@ -2769,7 +3381,7 @@
             b.innerHTML = items
               .map(
                 (i) => `<tr>
-        <td style="font-weight:600">${i.inventory_name}</td>
+        <td style="font-weight:600">${escHtml(i.inventory_name)}</td>
         <td><span class="badge badge-warning">${i.inventory_type}</span></td>
         <td style="font-weight:700">${i.qty_needed}</td>
         <td><button class="btn btn-sm btn-danger" onclick="deleteRecipeItem(${productId}, ${i.inventory_item_id})"><i class="bi bi-trash3-fill"></i></button></td>
@@ -2850,11 +3462,11 @@
           al.innerHTML = lowStockItems.length
             ? '<div class="alert-banner"><i class="bi bi-exclamation-triangle-fill" style="color:var(--warning)"></i><strong>' +
               lowStockItems.length +
-              " items</strong> con stock critico requieren reposicion.</div>"
+              (lowStockItems.length === 1 ? " producto</strong> está" : " productos</strong> están") + " en o por debajo del mínimo. Revisa la columna <b>A pedir</b>.</div>"
             : "";
           if (!invData.length) {
             b.innerHTML =
-              '<tr><td colspan="5"><div class="empty-state"><i class="bi bi-box-seam" style="color:var(--accent)"></i>No hay items de inventario</div></td></tr>';
+              '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-box-seam" style="color:var(--accent)"></i>No hay items de inventario</div></td></tr>';
             populateStockSel([]);
             return;
           }
@@ -2868,14 +3480,16 @@
                         100,
                         Math.round(
                           (item.stock_current /
-                            Math.max(item.stock_min * 2, 1)) *
+                            Math.max(item.stock_max || item.stock_min * 2, 1)) *
                             100,
                         ),
                       ),
                     )
                   : 100;
+              // Rojo: en o bajo el mínimo · Naranja: por debajo de la mitad entre mínimo y máximo · Verde: bien
+              const mid = item.stock_max ? (item.stock_min + item.stock_max) / 2 : item.stock_min * 2;
               const col =
-                pct < 30 ? "#ef4444" : pct < 60 ? "#f59e0b" : "#10b981";
+                item.stock_current <= item.stock_min ? "#ef4444" : item.stock_current < mid ? "#f59e0b" : "#10b981";
               return (
                 '<tr><td style="font-weight:600">' +
                 (item.name || item.item_name || "-") +
@@ -2887,6 +3501,12 @@
                 (item.unit || "") +
                 '</td><td style="color:#94a3b8">' +
                 item.stock_min +
+                '</td><td style="color:#94a3b8">' +
+                (item.stock_max || "-") +
+                '</td><td style="font-weight:700">' +
+                (item.stock_max && item.stock_current < item.stock_max
+                  ? Math.ceil(item.stock_max - item.stock_current)
+                  : 0) +
                 '</td><td style="min-width:110px"><div style="font-size:11px;color:#94a3b8;margin-bottom:2px">' +
                 pct +
                 '%</div><div class="stock-bar"><div class="stock-fill" style="width:' +
@@ -2895,7 +3515,9 @@
                 col +
                 '"></div></div></td><td><button class="btn btn-sm btn-success" onclick="openStockModal(' +
                 item.id +
-                ')"><i class="bi bi-plus-lg"></i> Stock</button></td></tr>'
+                ')"><i class="bi bi-plus-lg"></i> Stock</button> <button class="btn btn-sm btn-outline" title="Editar mínimo y máximo" onclick="editLimits(' +
+                item.id +
+                ')"><i class="bi bi-sliders"></i></button></td></tr>'
               );
             })
             .join("");
@@ -2947,16 +3569,39 @@
             toast("Stock actualizado");
             closeModal("modal-stock");
             loadInventario();
-          } else toast("Error al actualizar stock", "error");
+          } else toast(await errMsg(r, "Error al actualizar stock"), "error");
         } catch (e) {
           console.error(e);
           toast("Error en servidor", "error");
         }
       }
 
+      async function editLimits(id) {
+        const item = invData.find((i) => i.id === id);
+        if (!item) return;
+        const mn = prompt("Stock mínimo para " + item.name, item.stock_min);
+        if (mn === null) return;
+        const mx = prompt("Stock máximo para " + item.name, item.stock_max || "");
+        if (mx === null) return;
+        if (isNaN(parseFloat(mn)) || isNaN(parseFloat(mx)) || parseFloat(mx) < parseFloat(mn)) {
+          toast("El máximo debe ser un número mayor o igual al mínimo", "error");
+          return;
+        }
+        const r = await fetch("/api/inventory/" + id + "/limits", {
+          method: "PUT",
+          headers: AUTH(),
+          body: JSON.stringify({ stock_min: parseFloat(mn), stock_max: parseFloat(mx) }),
+        });
+        if (r.ok) {
+          toast("Límites actualizados");
+          loadInventario();
+        } else toast(await errMsg(r, "Error al actualizar límites"), "error");
+      }
+
       async function crearNuevoItem() {
         const name = document.getElementById("new-item-name").value;
         const stock_min = document.getElementById("new-item-min").value;
+        const stock_max = document.getElementById("new-item-max").value;
         const type = document.getElementById("new-item-type").value;
         if (!name || !stock_min) {
           toast("Completa todos los campos obligatorios", "error");
@@ -2969,6 +3614,7 @@
             body: JSON.stringify({
               name: name,
               stock_min: parseFloat(stock_min),
+              stock_max: parseFloat(stock_max) || 0,
               inventory_type: type,
             }),
           });
@@ -2977,7 +3623,7 @@
             closeModal("modal-new-item");
             document.getElementById("new-item-name").value = "";
             loadInventario();
-          } else toast("Error al crear ítem", "error");
+          } else toast(await errMsg(r, "Error al crear ítem"), "error");
         } catch (e) {
           console.error(e);
           toast("Error en servidor", "error");
@@ -3006,13 +3652,13 @@
                 '<tr><td><span class="badge badge-primary">#' +
                 res.id +
                 '</span></td><td style="font-weight:600">' +
-                (res.customer_name || "-") +
+                escHtml(res.name || "-") +
                 '</td><td style="color:#94a3b8">' +
-                (res.datetime || res.date || "-") +
+                escHtml(res.res_date ? fmtDia(res.res_date) + " · " + (res.res_time || "") : "-") +
                 "</td><td>" +
-                (res.party_size || res.guests || "-") +
+                escHtml(res.guests || "-") +
                 "</td><td>" +
-                (res.table_id || "-") +
+                (res.phone ? '<a href="tel:' + escHtml(res.phone) + '">' + escHtml(res.phone) + "</a>" : "-") +
                 '</td><td><span class="badge ' +
                 (res.status === "confirmed"
                   ? "badge-success"
@@ -3020,7 +3666,7 @@
                     ? "badge-warning"
                     : "badge-danger") +
                 '">' +
-                (res.status || "-") +
+                ({ pending: "Pendiente", confirmed: "Confirmada", arrived: "Llegó", cancelled: "Cancelada", completed: "Atendida" }[res.status] || "-") +
                 '</span></td><td style="display:flex;gap:4px">' +
                 (res.status === "pending"
                   ? '<button class="btn btn-sm btn-success" onclick="cambiarRes(' +
@@ -3049,7 +3695,7 @@
               (status === "confirmed" ? "confirmada" : "cancelada"),
           );
           loadReservaciones();
-        } else toast("Error", "error");
+        } else toast(await errMsg(r, "Error"), "error");
       }
 
       // DELIVERY
@@ -3074,18 +3720,22 @@
                 '<tr><td><span class="badge badge-primary">#' +
                 o.id +
                 '</span></td><td style="font-weight:600">' +
-                (o.customer_name || "-") +
+                escHtml(o.customer_name || (o.table_name || "").replace(/^Domicilio - /, "") || "Sin nombre") +
+                (o.customer_phone ? '<div style="color:#94a3b8;font-weight:400;font-size:12px">' + escHtml(o.customer_phone) + "</div>" : "") +
                 '</td><td style="color:#94a3b8">' +
-                (o.delivery_address || "-") +
+                escHtml(o.delivery_address || "Sin dirección") +
                 '</td><td style="color:var(--accent);font-weight:700">$' +
-                (o.total_cop || 0).toLocaleString("es-CO") +
+                ((o.total_cop || 0) + (o.delivery_fee_cop || 0)).toLocaleString("es-CO") +
+                '<div style="color:#94a3b8;font-weight:400;font-size:12px">domicilio ' +
+                (o.delivery_fee_cop ? "$" + o.delivery_fee_cop.toLocaleString("es-CO") : "sin definir") +
+                "</div>" +
                 '</td><td><span class="badge badge-warning">' +
-                (o.status || "pendiente") +
+                ({ pending: "En cocina", preparing: "En cocina", ready: "Listo para enviar", on_the_way: "En camino", delivered: "Entregado" }[o.kitchen_status] || "En cocina") +
                 '</span></td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-primary" onclick="abrirAsignarDel(' +
                 o.id +
-                ')"><i class="bi bi-bicycle"></i> Asignar</button><button class="btn btn-sm btn-success" onclick="completarDel(' +
+                ')"><i class="bi bi-bicycle"></i> Asignar</button><button class="btn btn-sm btn-success" title="Marcar como entregado" onclick="completarDel(' +
                 o.id +
-                ')"><i class="bi bi-check"></i></button></td></tr>',
+                ')"><i class="bi bi-check"></i> Entregado</button></td></tr>',
             )
             .join("");
         } catch (e) {
@@ -3105,7 +3755,7 @@
           s.innerHTML = users
             .map(
               (u) =>
-                `<option value="${u.id}">${u.first_name} ${u.last_name} (${u.role})</option>`,
+                `<option value="${u.id}">${escHtml((u.first_name || u.username) + " " + (u.last_name || ""))} (${escHtml(u.role)})</option>`,
             )
             .join("");
         } catch (e) {
@@ -3127,7 +3777,7 @@
           toast("Asignado");
           closeModal("modal-assign-del");
           loadDelivery();
-        } else toast("Error", "error");
+        } else toast(await errMsg(r, "Error"), "error");
       }
 
       async function completarDel(id) {
@@ -3138,7 +3788,7 @@
         if (r.ok) {
           toast("Entregado");
           loadDelivery();
-        } else toast("Error", "error");
+        } else toast(await errMsg(r, "Error"), "error");
       }
 
       // EMPLEADOS
@@ -3147,6 +3797,7 @@
           const r = await fetch("/api/users", { headers: AUTH() });
           if (!r.ok) throw new Error();
           const items = await r.json();
+          empCache = items;
           const b = document.getElementById("emp-tbody");
           if (!items.length) {
             b.innerHTML =
@@ -3190,7 +3841,9 @@
                 (u.pin || "") +
                 "', '" +
                 (u.first_name || u.username) +
-                '\')" title="Imprimir QR"><i class="bi bi-qr-code"></i></button></td></tr>',
+                '\')" title="Imprimir QR"><i class="bi bi-qr-code"></i></button> <button class="btn btn-sm btn-outline" title="Editar datos y cumpleaños" onclick="editarEmpleado(' +
+                u.id +
+                ')"><i class="bi bi-pencil-fill"></i></button></td></tr>',
             )
             .join("");
         } catch (e) {
@@ -3198,7 +3851,50 @@
             '<tr><td colspan="9"><div class="empty-state"><i class="bi bi-people"></i>Error</div></td></tr>';
         }
       }
+      let empCache = [];
+      const EMP_FIELDS = { "emp-first-name": "first_name", "emp-last-name": "last_name", "emp-username": "username",
+        "emp-cedula": "cedula", "emp-phone": "phone", "emp-role": "role", "emp-pin": "pin", "emp-wage": "daily_wage", "emp-birth": "birth_date" };
+      function nuevoEmpleado() {
+        document.getElementById("emp-id").value = "";
+        Object.keys(EMP_FIELDS).forEach((id) => (document.getElementById(id).value = id === "emp-role" ? "mesero" : ""));
+        document.getElementById("emp-password").value = "";
+        document.getElementById("emp-username").disabled = false;
+        document.getElementById("emp-password").placeholder = "Mínimo 6 caracteres";
+        document.getElementById("emp-modal-title").textContent = "Nuevo Empleado";
+        document.getElementById("emp-save-label").textContent = "Crear Empleado";
+        openModal("modal-empleado");
+      }
+      function editarEmpleado(id) {
+        const u = empCache.find((x) => x.id === id);
+        if (!u) return;
+        document.getElementById("emp-id").value = id;
+        Object.entries(EMP_FIELDS).forEach(([el, k]) => (document.getElementById(el).value = u[k] ?? ""));
+        document.getElementById("emp-password").value = "";
+        document.getElementById("emp-username").disabled = true;
+        document.getElementById("emp-password").placeholder = "Déjala vacía para no cambiarla";
+        document.getElementById("emp-modal-title").textContent = "Editar empleado: @" + u.username;
+        document.getElementById("emp-save-label").textContent = "Guardar cambios";
+        openModal("modal-empleado");
+      }
+
       async function crearEmpleado() {
+        const editId = document.getElementById("emp-id").value;
+        if (editId) {
+          const body = {};
+          Object.entries(EMP_FIELDS).forEach(([el, k]) => {
+            if (k !== "username") body[k] = document.getElementById(el).value;
+          });
+          body.daily_wage = parseFloat(body.daily_wage) || 0;
+          const pw = document.getElementById("emp-password").value;
+          if (pw) body.password = pw;
+          const r = await fetch("/api/users/" + editId, { method: "PUT", headers: AUTH(), body: JSON.stringify(body) });
+          if (r.ok) {
+            toast("Empleado actualizado");
+            closeModal("modal-empleado");
+            loadEmpleados();
+          } else toast(await errMsg(r, "No se pudo actualizar"), "error");
+          return;
+        }
         const body = {
           username: document.getElementById("emp-username").value,
           password: document.getElementById("emp-password").value,
@@ -3213,7 +3909,7 @@
           birth_date: document.getElementById("emp-birth").value,
         };
         if (!body.username || !body.password) {
-          toast("Usuario y contrasena son obligatorios", "error");
+          toast("Usuario y contraseña son obligatorios", "error");
           return;
         }
         try {
@@ -3231,7 +3927,7 @@
             toast("Error: " + (e.detail || "Desconocido"), "error");
           }
         } catch (e) {
-          toast("Error de conexion", "error");
+          toast("Error de conexión", "error");
         }
       }
       async function eliminarEmp(id, username) {
@@ -3244,7 +3940,7 @@
           if (r.ok) {
             toast("Eliminado");
             loadEmpleados();
-          } else toast("Error", "error");
+          } else toast(await errMsg(r, "Error"), "error");
         } catch (e) {
           toast("Error", "error");
         }
@@ -3285,7 +3981,7 @@
           const d = document.getElementById("gc-history");
           if (!data.length) {
             d.innerHTML =
-              '<div class="empty-state"><i class="bi bi-gift"></i>Los bonos emitidos apareceran aqui</div>';
+              '<div class="empty-state"><i class="bi bi-gift"></i>Los bonos emitidos apareceran aquí</div>';
             return;
           }
           d.innerHTML = data
@@ -3339,15 +4035,18 @@
       }
       async function _emitirGC(valor, desc, type) {
         try {
-          const r = await fetch("/api/vouchers/gift_card", {
-            method: "POST",
-            headers: AUTH(),
-            body: JSON.stringify({
-              value_cop: valor,
-              description: desc,
-              type: type,
-            }),
-          });
+          const venta = String(type || "").startsWith("SALE:");
+          const r = venta
+            ? await fetch("/api/vouchers/sell", {
+                method: "POST",
+                headers: AUTH(),
+                body: JSON.stringify({ value_cop: valor, description: desc, payment_method: type.split(":")[1] }),
+              })
+            : await fetch("/api/vouchers/gift_card", {
+                method: "POST",
+                headers: AUTH(),
+                body: JSON.stringify({ value_cop: valor, description: desc, type: type }),
+              });
           if (r.ok) {
             const d = await r.json();
             toast("Gift Card emitida: " + d.code);
@@ -3363,7 +4062,7 @@
             toast("Error: " + (e.detail || ""), "error");
           }
         } catch (e) {
-          toast("Error de conexion", "error");
+          toast("Error de conexión", "error");
         }
       }
       async function validarGiftCard() {
@@ -3372,7 +4071,7 @@
           .value.trim()
           .toUpperCase();
         if (!code) {
-          toast("Ingresa un codigo", "error");
+          toast("Ingresa un código", "error");
           return;
         }
         try {
@@ -3397,24 +4096,26 @@
         }
       }
       async function issueBirthdayBonus(empId, empName) {
-        if (!confirm("Emitir bono de $50,000 para " + empName + "?")) return;
+        const valor = parseFloat(prompt("Valor del bono de cumpleaños para " + empName + " (consumo en el local):", "50000"));
+        if (!valor || valor <= 0) return;
         try {
           const r = await fetch("/api/employees/issue_birthday_bonus", {
             method: "POST",
             headers: AUTH(),
-            body: JSON.stringify({ employee_id: empId, value_cop: 50000 }),
+            body: JSON.stringify({ employee_id: empId, value_cop: valor }),
           });
           const d = await r.json();
           if (r.ok) {
             toast("Bono emitido para " + empName);
             alert(
-              "Bono de Cumpleanos Emitido\n\nCODIGO: " +
+              "🎂 Bono de cumpleaños emitido\n\nCÓDIGO: " +
                 d.code +
-                "\nVALOR: $50,000",
+                "\nVALOR: $" + valor.toLocaleString("es-CO") +
+                "\n\nEs para consumir en el local: en caja se usa con «Pagar con bono».",
             );
-          } else toast("Error al emitir bono", "error");
+          } else toast(typeof d.detail === "string" ? d.detail : "Error al emitir bono", "error");
         } catch (e) {
-          toast("Error de conexion", "error");
+          toast("Error de conexión", "error");
         }
       }
 
@@ -3439,26 +4140,39 @@
             toast("Logo subido correctamente");
           } else toast("Error al subir logo", "error");
         } catch (e) {
-          toast("Error de conexion", "error");
+          toast("Error de conexión", "error");
         }
       }
 
+      // Tarifas de domicilio (zonas)
+      function zoneRow(z = { name: "", fee: 0 }) {
+        return `<div class="zone-row" style="display:flex;gap:8px;margin-bottom:6px">
+          <input class="form-control zone-name" placeholder="Ej: Cerca (hasta 2 km)" value="${escHtml(z.name)}" />
+          <input class="form-control zone-fee" type="number" min="0" step="500" style="max-width:130px" value="${z.fee || 0}" />
+          <button type="button" class="btn btn-sm btn-danger" title="Quitar zona" onclick="this.parentElement.remove()"><i class="bi bi-trash3-fill"></i></button>
+        </div>`;
+      }
+      function renderZones(zones) {
+        document.getElementById("zones-editor").innerHTML = (zones.length ? zones : [{ name: "", fee: 0 }]).map(zoneRow).join("");
+      }
+      function addZoneRow() {
+        document.getElementById("zones-editor").insertAdjacentHTML("beforeend", zoneRow());
+      }
+      function readZones() {
+        return [...document.querySelectorAll("#zones-editor .zone-row")]
+          .map((r) => ({ name: r.querySelector(".zone-name").value.trim(), fee: parseFloat(r.querySelector(".zone-fee").value) || 0 }))
+          .filter((z) => z.name);
+      }
+
       async function saveBranding() {
-        let adImages = [];
-        try {
-          adImages = JSON.parse(
-            document.getElementById("conf-ad-images").value,
-          );
-        } catch (e) {}
         const body = {
           business_name: document.getElementById("conf-name").value,
           theme_color: document.getElementById("conf-color").value,
           branch_id: document.getElementById("conf-branch").value,
           logo_url: document.getElementById("conf-logo-url").value,
-          dian_api_key: document.getElementById("conf-dian").value,
           whatsapp_number: document.getElementById("conf-whatsapp").value,
+          delivery_zones: readZones(),
           loyalty_enabled: document.getElementById("conf-loyalty-enabled") ? document.getElementById("conf-loyalty-enabled").checked : true,
-          ad_images: adImages,
         };
         try {
           const r = await fetch("/branding", {
@@ -3467,109 +4181,83 @@
             body: JSON.stringify(body),
           });
           if (r.ok) {
-            toast("Configuracion guardada");
+            toast("Configuración guardada");
             document.getElementById("brand-name").textContent =
               body.business_name;
-          } else toast("Error al guardar", "error");
-        } catch (e) {
-          toast("Error de conexion", "error");
-        }
-      }
-
-      function renderAdImages() {
-        let images = [];
-        try {
-          images = JSON.parse(document.getElementById("conf-ad-images").value);
-        } catch (e) {}
-        const c = document.getElementById("ad-images-container");
-        c.innerHTML = images
-          .map(
-            (url, i) => `
-    <div style="position:relative; width:100px; height:100px; flex-shrink:0;">
-      <img src="${url}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;" alt="Anuncio publicitario">
-      <button class="btn btn-sm btn-danger" style="position:absolute;top:5px;right:5px;padding:2px 6px;" onclick="removeAdImage(${i})"><i class="bi bi-trash"></i></button>
-      <div style="position:absolute;bottom:0;left:0;width:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:space-between;border-bottom-left-radius:8px;border-bottom-right-radius:8px;">
-        <button style="background:transparent;color:white;border:none;padding:4px 10px;cursor:${i === 0 ? "default" : "pointer"};opacity:${i === 0 ? 0.3 : 1}" onclick="moveAdImage(${i}, -1)" ${i === 0 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
-        <button style="background:transparent;color:white;border:none;padding:4px 10px;cursor:${i === images.length - 1 ? "default" : "pointer"};opacity:${i === images.length - 1 ? 0.3 : 1}" onclick="moveAdImage(${i}, 1)" ${i === images.length - 1 ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
-      </div>
-    </div>
-  `,
-          )
-          .join("");
-      }
-
-      function removeAdImage(index) {
-        let images = JSON.parse(
-          document.getElementById("conf-ad-images").value,
-        );
-        images.splice(index, 1);
-        document.getElementById("conf-ad-images").value =
-          JSON.stringify(images);
-        renderAdImages();
-      }
-
-      function moveAdImage(index, dir) {
-        let images = JSON.parse(
-          document.getElementById("conf-ad-images").value,
-        );
-        if (index + dir < 0 || index + dir >= images.length) return;
-        const temp = images[index];
-        images[index] = images[index + dir];
-        images[index + dir] = temp;
-        document.getElementById("conf-ad-images").value =
-          JSON.stringify(images);
-        renderAdImages();
-      }
-
-      async function uploadAdImage() {
-        const input = document.getElementById("conf-ad-file");
-        if (!input.files || !input.files[0]) return;
-        const f = new FormData();
-        f.append("file", input.files[0]);
-        try {
-          toast("Subiendo imagen...");
-          const r = await fetch("/api/upload_image", {
-            method: "POST",
-            headers: { Authorization: AUTH().Authorization },
-            body: f,
-          });
-          const res = await r.json();
-          if (r.ok) {
-            let images = JSON.parse(
-              document.getElementById("conf-ad-images").value || "[]",
-            );
-            images.push(res.url);
-            document.getElementById("conf-ad-images").value =
-              JSON.stringify(images);
-            renderAdImages();
-            toast("Imagen agregada, no olvides guardar configuracion");
-            input.value = "";
-          } else {
-            toast("Error al subir", "error");
-          }
+          } else toast(await errMsg(r, "Error al guardar"), "error");
         } catch (e) {
           toast("Error de conexión", "error");
         }
       }
+
+      // ===== INTEGRACIONES =====
+      async function loadIntegrations() {
+        const r = await fetch("/api/integrations", { headers: AUTH() });
+        if (!r.ok) return;
+        const c = await r.json();
+        const set = (id, v) => (document.getElementById(id).value = v ?? "");
+        const chk = (id, v) => (document.getElementById(id).checked = !!v);
+        chk("int-dian-enabled", c.dian_enabled);
+        set("int-dian-provider", c.dian_provider);
+        set("int-master-url", c.master_server_url);
+        chk("int-sync-enabled", c.sync_enabled);
+        chk("int-wompi-enabled", c.wompi_enabled);
+        set("int-wompi-env", c.wompi_environment || "production");
+        set("int-wompi-pub", c.wompi_public_key);
+        set("int-public-url", c.public_base_url);
+        ["int-dian-key", "int-master-key", "int-wompi-int", "int-wompi-ev"].forEach((id) => set(id, ""));
+        const mark = (id, ok) => (document.getElementById(id).textContent = ok ? "✓ guardada" : "");
+        mark("int-dian-key-set", c.dian_api_key_set);
+        mark("int-master-key-set", c.master_api_key_set);
+        mark("int-wompi-int-set", c.wompi_integrity_secret_set);
+        mark("int-wompi-ev-set", c.wompi_events_secret_set);
+        const base = (c.public_base_url || location.origin).replace(/\/$/, "");
+        document.getElementById("int-webhook-url").textContent = base + "/api/payments/wompi/webhook";
+        const st = document.getElementById("int-sync-status");
+        const ls = c.last_sync;
+        st.innerHTML =
+          (ls
+            ? `${ls.ok ? "✅" : "⚠️"} Última: ${escHtml(fmtFecha(ls.at))} — ${escHtml(ls.message)}`
+            : "Sin sincronizaciones todavía.") + `<br>Órdenes pendientes por enviar: <b>${c.pending_sync}</b>`;
+      }
+
+      async function saveIntegrations() {
+        const v = (id) => document.getElementById(id).value.trim();
+        const body = {
+          dian_enabled: document.getElementById("int-dian-enabled").checked,
+          dian_provider: v("int-dian-provider"),
+          dian_api_key: v("int-dian-key") || null,
+          master_server_url: v("int-master-url"),
+          master_api_key: v("int-master-key") || null,
+          sync_enabled: document.getElementById("int-sync-enabled").checked,
+          wompi_enabled: document.getElementById("int-wompi-enabled").checked,
+          wompi_environment: v("int-wompi-env"),
+          wompi_public_key: v("int-wompi-pub"),
+          wompi_integrity_secret: v("int-wompi-int") || null,
+          wompi_events_secret: v("int-wompi-ev") || null,
+          public_base_url: v("int-public-url"),
+        };
+        const r = await fetch("/api/integrations", { method: "PUT", headers: AUTH(), body: JSON.stringify(body) });
+        if (r.ok) {
+          toast("Integraciones guardadas");
+          loadIntegrations();
+        } else toast(await errMsg(r, "No se pudieron guardar las integraciones"), "error");
+      }
+
       async function syncToMaster() {
         const btn = document.getElementById("btn-sync");
         btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sincronizando...';
         btn.disabled = true;
         try {
-          const r = await fetch("/api/sync/master", {
-            method: "POST",
-            headers: AUTH(),
-          });
-          if (r.ok) {
-            toast("Sincronizacion exitosa");
-            document.getElementById("last-sync-time").textContent =
-              new Date().toLocaleString("es-CO");
-          } else toast("Error de sincronizacion", "error");
+          const r = await fetch("/api/sync/master", { method: "POST", headers: AUTH() });
+          if (r.ok) toast((await r.json()).message);
+          else toast(await errMsg(r, "No se pudo sincronizar"), "error");
         } catch (e) {
-          toast("Error de conexion", "error");
+          toast("No hay conexión con el servidor", "error");
         }
-        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sincronizar Ahora';
+        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sincronizar ahora';
         btn.disabled = false;
+        loadIntegrations();
       }
       function generateQRs() {
         const n = parseInt(document.getElementById("conf-tables").value) || 6;
@@ -3578,7 +4266,7 @@
           "<" +
           "html><" +
           "head><" +
-          "title>QRs Taqueria Pro</title><style>body{font-family:sans-serif;text-align:center}.qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:20px}.qr-card{border:2px dashed #000;padding:20px;border-radius:10px;page-break-inside:avoid}.qr-card img{width:150px;height:150px}.qr-card h2{margin:10px 0 0;font-size:24px}.qr-card p{margin:5px 0 0;color:#555}</style></" +
+          "title>QRs Taquería Pro</title><style>body{font-family:sans-serif;text-align:center}.qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:20px}.qr-card{border:2px dashed #000;padding:20px;border-radius:10px;page-break-inside:avoid}.qr-card img{width:150px;height:150px}.qr-card h2{margin:10px 0 0;font-size:24px}.qr-card p{margin:5px 0 0;color:#555}</style></" +
           "head><" +
           'body><h1>Escanea para Ordenar</h1><div class="qr-grid">';
         for (let i = 1; i <= n; i++) {
@@ -3602,6 +4290,6 @@
         w.document.close();
       }
     </script>
-    <script src="/core.js"></script>
+    <script src="core.js"></script>
   </body>
 </html>

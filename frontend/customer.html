@@ -18,7 +18,7 @@
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       }
       .header {
-        background: #dc3545;
+        background: var(--tp-primary);
         color: white;
         padding: 15px;
         position: sticky;
@@ -163,9 +163,9 @@
         white-space: nowrap;
         padding: 7px 18px;
         border-radius: 20px;
-        border: 2px solid #dc3545;
+        border: 2px solid var(--tp-primary);
         background: transparent;
-        color: #dc3545;
+        color: var(--tp-primary);
         font-weight: 600;
         font-size: 0.88rem;
         cursor: pointer;
@@ -173,7 +173,7 @@
         flex-shrink: 0;
       }
       .cat-tab.active {
-        background: #dc3545;
+        background: var(--tp-primary);
         color: white;
       }
       .cat-section-title {
@@ -185,14 +185,14 @@
         margin-bottom: 10px;
       }
     </style>
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
+      <link rel="stylesheet" href="css/theme.css" />
   </head>
   <body>
     <div class="header" id="main-header">
       <div class="d-flex align-items-center">
         <img
           id="header-logo"
-          src=""
           style="
             height: 30px;
             margin-right: 10px;
@@ -202,9 +202,22 @@
           "
         />
         <h5 class="m-0" id="table-title">Cargando Mesa...</h5>
+        <a
+          href="waiter.html"
+          id="back-to-map"
+          class="btn btn-sm btn-light ms-auto"
+          style="display: none"
+          >← Mesas</a
+        >
       </div>
       <small id="header-subtitle">Realiza tu pedido directo a cocina</small>
     </div>
+    <script>
+      // Solo el mesero (con sesión) ve el botón para volver al mapa de mesas
+      if (localStorage.getItem("role") === "mesero" && localStorage.getItem("token")) {
+        document.getElementById("back-to-map").style.display = "inline-block";
+      }
+    </script>
 
     <div id="cat-tabs-bar" class="cat-tabs" style="display: none"></div>
 
@@ -272,7 +285,7 @@
           <span class="fs-5 fw-bold text-success" id="modal-total">$0</span>
         </div>
         <button
-          class="btn btn-danger w-100 py-3 fs-5 fw-bold rounded-3"
+          class="btn btn-success w-100 py-3 fs-5 fw-bold"
           onclick="submitOrder()"
           id="submit-btn"
         >
@@ -375,7 +388,9 @@
               "<div class='alert alert-danger m-3'>Por favor, escanea el código QR de tu mesa nuevamente.</div>";
             return;
           }
-          document.getElementById("table-title").innerText = "Mesa " + tableId;
+          document.getElementById("table-title").innerText = String(tableId).toLowerCase().includes("donaci")
+            ? "🤝 Pedido de donación (sin cobro)"
+            : "Mesa " + tableId;
         }
 
         try {
@@ -645,11 +660,16 @@
           });
 
           if (res.ok) {
+            const sent = await res.json().catch(() => ({}));
+            const flags = await fetch("/branding").then((r) => r.json()).catch(() => ({}));
+            const puedePagar = flags.online_payments && !isDonation && sent.order_id;
             document.getElementById("cart-items").innerHTML = `
                         <div class="text-center mt-5">
                             <h1 style="font-size: 60px;">✅</h1>
                             <h3 class="fw-bold text-success mt-3">¡Pedido Enviado!</h3>
                             <p class="text-muted">La cocina ya está preparando tu orden.</p>
+                            ${puedePagar ? `<button class="btn btn-success btn-lg w-100 mt-3" onclick="payOnline(${sent.order_id})">💳 Pagar mi cuenta en línea</button>
+                              <div class="small text-muted mt-2">Tarjeta, PSE o Nequi a través de Wompi. También puedes pagar en caja.</div>` : ""}
                             <button class="btn btn-outline-dark mt-4" onclick="location.reload()">Hacer otro pedido</button>
                         </div>
                     `;
@@ -668,7 +688,7 @@
 
       window.onload = init;
 
-      let currentOnlineOrderId = null;
+
 
       async function submitReservation() {
         const name = document.getElementById("res-name").value;
@@ -699,22 +719,48 @@
         }
       }
 
-      async function confirmOnlinePayment() {
-        if (!currentOnlineOrderId) return;
-        try {
-          const res = await fetch("/api/customer/pay/" + currentOnlineOrderId, {
-            method: "POST",
-          });
-          if (res.ok) {
-            alert(
-              "¡Pago exitoso! Hemos recibido tu pago y tu pedido va en camino a prepararse.",
-            );
-            document.getElementById("pay-modal").style.display = "none";
-          }
-        } catch (e) {
-          alert("Error de conexión");
-        }
+      // ---------- Pago en línea real (Wompi) ----------
+      async function payOnline(orderId) {
+        const back = new URL(location.href);
+        back.searchParams.set("pago", orderId);
+        const r = await fetch("/api/payments/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: orderId, return_url: back.toString() }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) return alert(typeof d.detail === "string" ? d.detail : "No se pudo iniciar el pago en línea");
+        location.href = d.checkout_url; // página segura de Wompi
       }
+
+      // Al volver de Wompi: consultar el estado real del pago
+      (async function checkReturn() {
+        const params = new URLSearchParams(location.search);
+        const orderId = params.get("pago");
+        if (!orderId) return;
+        const banner = document.createElement("div");
+        banner.className = "alert alert-info text-center m-3";
+        banner.textContent = "Confirmando tu pago con Wompi…";
+        document.body.prepend(banner);
+        for (let i = 0; i < 20; i++) {
+          try {
+            const st = await (await fetch("/api/payments/status/" + encodeURIComponent(orderId))).json();
+            if (st.paid) {
+              banner.className = "alert alert-success text-center m-3";
+              banner.textContent = "✅ ¡Pago recibido! Gracias por tu compra.";
+              return;
+            }
+            if (["DECLINED", "VOIDED", "ERROR"].includes(st.online_status)) {
+              banner.className = "alert alert-danger text-center m-3";
+              banner.textContent = "El pago no fue aprobado. Puedes intentarlo de nuevo o pagar en caja.";
+              return;
+            }
+          } catch (e) {}
+          await new Promise((r) => setTimeout(r, 3000));
+        }
+        banner.className = "alert alert-warning text-center m-3";
+        banner.textContent = "Tu pago aún está en proceso. Si se aprueba, la cuenta se cerrará sola; si no, paga en caja.";
+      })();
     </script>
 
     <!-- Modal Reserva -->
@@ -804,69 +850,6 @@
       </div>
     </div>
 
-    <!-- Modal Pagos (Simulador Wompi/MercadoPago) -->
-    <div
-      class="modal"
-      id="pay-modal"
-      tabindex="-1"
-      style="z-index: 3000; background: rgba(0, 0, 0, 0.7)"
-    >
-      <div class="modal-dialog modal-dialog-centered">
-        <div
-          class="modal-content border-0"
-          style="border-radius: 1rem; overflow: hidden"
-        >
-          <div
-            class="modal-header text-white"
-            style="
-              background: linear-gradient(135deg, #009ee3 0%, #007bc0 100%);
-            "
-          >
-            <h5 class="modal-title fw-bold">MercadoPago / Wompi (Sandbox)</h5>
-            <button
-              type="button"
-              class="btn-close btn-close-white"
-              onclick="
-                document.getElementById('pay-modal').style.display = 'none'
-              "
-            ></button>
-          </div>
-          <div class="modal-body p-4 text-center">
-            <h3 class="mb-4 fw-bold">
-              Total a pagar:
-              <span id="pay-total-amount" class="text-primary"></span>
-            </h3>
-            <p class="text-muted small mb-4">
-              Esta es una simulación de la pasarela de pagos.
-            </p>
-
-            <div class="mb-3 text-start">
-              <label class="form-label fw-bold">Número de Tarjeta</label>
-              <input
-                type="text"
-                class="form-control form-control-lg text-center"
-                value="4111 1111 1111 1111"
-                readonly
-              />
-            </div>
-
-            <button
-              class="btn btn-success btn-lg w-100 fw-bold shadow-sm"
-              onclick="confirmOnlinePayment()"
-            >
-              Pagar con Tarjeta (Test)
-            </button>
-            <button
-              class="btn btn-outline-secondary w-100 mt-2 fw-bold"
-              onclick="confirmOnlinePayment()"
-            >
-              Pagar con PSE / Nequi (Test)
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <script src="/core.js"></script>
+    <script src="core.js"></script>
   </body>
 </html>

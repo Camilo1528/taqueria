@@ -2,15 +2,16 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Iniciar Sesión - Taquería Pro</title>
     <link href="libs/bootstrap.min.css" rel="stylesheet" />
     <style>
       body {
-        background: #f3f4f6;
-        height: 100vh;
+        min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
+        padding: 16px;
       }
       .login-card {
         background: white;
@@ -20,136 +21,156 @@
         width: 100%;
         max-width: 400px;
       }
-      .logo {
-        width: 100px;
-        margin-bottom: 20px;
+      .login-hint {
+        color: #6b7280;
+        font-size: 0.9rem;
+      }
+      #pin-input {
+        letter-spacing: 0.4em;
+        font-size: 1.6rem;
+      }
+      #pin-input::placeholder {
+        letter-spacing: normal;
+        font-size: 1.1rem;
+      }
+      #login-error {
+        display: none;
       }
     </style>
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
+      <link rel="stylesheet" href="css/theme.css" />
   </head>
-  <body>
-    <div class="login-card text-center">
-      <h2 class="fw-bold mb-4" id="brand-name">Cargando...</h2>
+  <body class="tp-auth">
+    <main class="login-card text-center">
+      <div class="tp-logo" aria-hidden="true">🌮</div>
+      <h1 class="h2 fw-bold mb-1" id="brand-name">Taquería Pro</h1>
+      <p class="login-hint mb-4">Ingresa para empezar tu turno</p>
 
-      <ul
-        class="nav nav-pills mb-3 justify-content-center"
-        id="pills-tab"
-        role="tablist"
-      >
-        <li class="nav-item" role="presentation">
-          <button
-            class="nav-link active"
-            id="pills-pin-tab"
-            data-bs-toggle="pill"
-            data-bs-target="#pills-pin"
-            type="button"
-            role="tab"
-          >
-            Con PIN
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button
-            class="nav-link"
-            id="pills-user-tab"
-            data-bs-toggle="pill"
-            data-bs-target="#pills-user"
-            type="button"
-            role="tab"
-          >
-            Usuario
-          </button>
-        </li>
-      </ul>
-
-      <div class="tab-content" id="pills-tabContent">
-        <div class="tab-pane fade show active" id="pills-pin" role="tabpanel">
-          <input
-            type="password"
-            id="pin-input"
-            class="form-control form-control-lg text-center mb-3"
-            placeholder="Ingresa tu PIN"
-            maxlength="6"
-          />
-          <button
-            class="btn btn-primary btn-lg w-100 fw-bold"
-            onclick="loginPin()"
-          >
-            Entrar con PIN
-          </button>
-        </div>
-        <div class="tab-pane fade" id="pills-user" role="tabpanel">
-          <input
-            type="text"
-            id="username-input"
-            class="form-control mb-3"
-            placeholder="Usuario"
-          />
-          <input
-            type="password"
-            id="password-input"
-            class="form-control mb-3"
-            placeholder="Contraseña"
-          />
-          <button
-            class="btn btn-primary btn-lg w-100 fw-bold"
-            onclick="loginUser()"
-          >
-            Entrar
-          </button>
-        </div>
+      <div class="nav nav-pills mb-3 justify-content-center" role="tablist">
+        <button class="nav-link active" id="tab-pin" type="button" role="tab" aria-selected="true" onclick="showTab('pin')">
+          Con PIN
+        </button>
+        <button class="nav-link" id="tab-user" type="button" role="tab" aria-selected="false" onclick="showTab('user')">
+          Usuario y contraseña
+        </button>
       </div>
-    </div>
 
-    <script src="libs/bootstrap.bundle.min.js"></script>
+      <div id="login-error" class="alert alert-danger py-2" role="alert"></div>
+
+      <form id="pane-pin" onsubmit="loginPin(event)">
+        <label for="pin-input" class="form-label login-hint">Tu PIN de empleado (4 a 8 números)</label>
+        <input
+          type="password"
+          id="pin-input"
+          class="form-control form-control-lg text-center mb-3"
+          placeholder="Escribe tu PIN"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          maxlength="8"
+          autocomplete="off"
+          required
+          autofocus
+        />
+        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Entrar</button>
+      </form>
+
+      <form id="pane-user" onsubmit="loginUser(event)" hidden>
+        <input type="text" id="username-input" class="form-control form-control-lg mb-3" placeholder="Usuario" autocomplete="username" required />
+        <input type="password" id="password-input" class="form-control form-control-lg mb-3" placeholder="Contraseña" autocomplete="current-password" required />
+        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Entrar</button>
+      </form>
+    </main>
+
     <script>
       fetch("/branding")
         .then((res) => res.json())
         .then((data) => {
-          document.getElementById("brand-name").innerText =
-            data.business_name || "Mi Restaurante";
-        });
+          if (data.business_name) document.getElementById("brand-name").innerText = data.business_name;
+        })
+        .catch(() => {});
 
-      function handleLoginResponse(res) {
+      function showTab(which) {
+        const pin = which === "pin";
+        document.getElementById("pane-pin").hidden = !pin;
+        document.getElementById("pane-user").hidden = pin;
+        document.getElementById("tab-pin").classList.toggle("active", pin);
+        document.getElementById("tab-user").classList.toggle("active", !pin);
+        document.getElementById("tab-pin").setAttribute("aria-selected", pin);
+        document.getElementById("tab-user").setAttribute("aria-selected", !pin);
+        showError("");
+        document.getElementById(pin ? "pin-input" : "username-input").focus();
+      }
+
+      function showError(msg) {
+        const box = document.getElementById("login-error");
+        box.textContent = msg;
+        box.style.display = msg ? "block" : "none";
+      }
+
+      const HOME_BY_ROLE = {
+        admin: "admin.html",
+        cajero: "cashier.html",
+        mesero: "waiter.html",
+        cocina: "kitchen.html",
+        domiciliario: "driver.html",
+      };
+
+      async function handleLoginResponse(res) {
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (e) {}
         if (!res.ok) {
-          alert("Credenciales inválidas");
+          if (res.status === 429) showError(data.detail || "Demasiados intentos. Espera unos minutos.");
+          else showError("PIN o datos incorrectos. Revisa e intenta de nuevo.");
           return;
         }
-        res.json().then((data) => {
-          localStorage.setItem("token", data.token);
-          localStorage.setItem("role", data.role);
-          localStorage.setItem("username", data.username);
-          if (data.role === "admin") window.location.href = "admin.html";
-          else if (data.role === "cajero")
-            window.location.href = "cashier.html";
-          else if (data.role === "mesero") window.location.href = "waiter.html";
-          else if (data.role === "cocina")
-            window.location.href = "kitchen.html";
-          else window.location.href = "customer.html";
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("role", data.role);
+        localStorage.setItem("username", data.username);
+        window.location.href = HOME_BY_ROLE[data.role] || "index.html";
+      }
+
+      async function send(url, body, form) {
+        const btn = form.querySelector("button[type=submit]");
+        btn.disabled = true;
+        btn.textContent = "Entrando...";
+        showError("");
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          await handleLoginResponse(res);
+        } catch (e) {
+          showError("No hay conexión con el servidor. Revisa la red e intenta de nuevo.");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Entrar";
+        }
+      }
+
+      function loginPin(ev) {
+        ev.preventDefault();
+        const input = document.getElementById("pin-input");
+        send("/api/login/pin", { pin: input.value.trim() }, ev.target).then(() => {
+          input.value = "";
         });
       }
 
-      async function loginPin() {
-        const pin = document.getElementById("pin-input").value;
-        const res = await fetch("/api/login/pin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pin }),
-        });
-        handleLoginResponse(res);
-      }
-
-      async function loginUser() {
-        const username = document.getElementById("username-input").value;
-        const password = document.getElementById("password-input").value;
-        const res = await fetch("/api/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
-        });
-        handleLoginResponse(res);
+      function loginUser(ev) {
+        ev.preventDefault();
+        send(
+          "/api/login",
+          {
+            username: document.getElementById("username-input").value.trim(),
+            password: document.getElementById("password-input").value,
+          },
+          ev.target,
+        );
       }
     </script>
-    <script src="/core.js"></script>
+    <script src="core.js"></script>
   </body>
 </html>

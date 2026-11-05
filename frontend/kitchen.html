@@ -11,28 +11,9 @@
     <link rel="stylesheet" href="css/kitchen.css" />
 
     <link rel="manifest" href="manifest.json" />
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((reg) => console.log("SW registered"))
-          .catch((err) => console.log("SW failed", err));
-      }
-      if (localStorage.getItem("theme") === "dark") {
-        document.documentElement.classList.add("dark-mode");
-      }
-      function toggleTheme() {
-        if (document.documentElement.classList.contains("dark-mode")) {
-          document.documentElement.classList.remove("dark-mode");
-          localStorage.setItem("theme", "light");
-        } else {
-          document.documentElement.classList.add("dark-mode");
-          localStorage.setItem("theme", "dark");
-        }
-      }
-    </script>
+      <link rel="stylesheet" href="css/theme.css" />
   </head>
-  <body>
+  <body class="tp-dark">
     <div class="container-fluid py-4">
       <header
         class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3"
@@ -175,6 +156,6 @@
     </script>
 
     <script src="js/kitchen.js"></script>
-    <script src="/core.js"></script>
+    <script src="core.js"></script>
   </body>
 </html>

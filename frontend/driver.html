@@ -51,18 +51,18 @@
         margin-bottom: 2px;
       }
     </style>
+      <link rel="stylesheet" href="css/theme.css" />
   </head>
   <body>
+    <div class="tp-topbar d-flex justify-content-between align-items-center">
+      <h1>🛵 Mis domicilios</h1>
+      <button class="btn btn-sm btn-outline-light" onclick="logout()">Salir</button>
+    </div>
     <div class="container-fluid p-3">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold m-0 text-primary">🛵 Delivery Pro</h3>
-        <button class="btn btn-sm btn-outline-danger" onclick="logout()">
-          Salir
-        </button>
-      </div>
-
       <div id="pending-orders">
-        <h5 class="fw-bold mb-3 text-secondary">Pedidos Pendientes</h5>
+        <h6 class="fw-bold mb-3 text-uppercase" style="color: var(--tp-muted); letter-spacing: 0.06em; font-size: 0.78rem">
+          Pedidos disponibles y en camino
+        </h6>
         <div id="orders-list">
           <div class="text-center text-muted mt-5">Cargando pedidos...</div>
         </div>
@@ -79,7 +79,8 @@
             headers: { Authorization: "Bearer " + token },
           });
           if (res.status === 401) {
-            window.location.href = "index.html";
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
             return;
           }
           const orders = await res.json();
@@ -93,46 +94,62 @@
             return;
           }
 
-          orders.forEach((o) => {
-            let statusBadge = "";
-            let actionBtn = "";
+          const myId = (() => {
+            try {
+              return JSON.parse(atob(token.split(".")[1])).id;
+            } catch (e) {
+              return null;
+            }
+          })();
+          const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+          // Solo pedidos libres o míos que aún no se han entregado
+          const visibles = orders.filter(
+            (o) => o.kitchen_status !== "delivered" && (!o.driver_id || o.driver_id === myId),
+          );
+          if (visibles.length === 0) {
+            list.innerHTML =
+              '<div class="text-center text-muted mt-5"><h4>📭</h4>No hay domicilios pendientes.</div>';
+            return;
+          }
 
-            // If it has NO driver, or I am the driver and it's not on the way yet
-            if (!o.driver_id || o.kitchen_status !== "on_the_way") {
+          visibles.forEach((o) => {
+            const mio = o.driver_id === myId && o.kitchen_status === "on_the_way";
+            const nombre = o.customer_name || (o.table_name || "").replace(/^Domicilio - /, "");
+            const direccion = o.delivery_address || "";
+            let statusBadge, actionBtn;
+            if (!mio) {
               statusBadge = '<span class="badge bg-primary">Disponible</span>';
               actionBtn = `<button class="btn btn-primary w-100 fw-bold" onclick="assignOrder(${o.id})">🚀 Aceptar Pedido</button>`;
-            } else if (o.kitchen_status === "on_the_way") {
-              statusBadge =
-                '<span class="badge bg-warning text-dark">En Camino</span>';
-              // Extract address (assuming it's in the notes or table_name. Here table_name is "Domicilio - Dirección")
-              const address = o.table_name
-                .replace("Domicilio", "")
-                .trim()
-                .replace(/^- /, "");
+            } else {
+              statusBadge = '<span class="badge bg-warning text-dark">En Camino</span>';
               actionBtn = `
-                        <a href="https://maps.google.com/?q=${encodeURIComponent(address)}" target="_blank" class="btn btn-outline-dark w-100 fw-bold mb-2">🗺️ Abrir en GPS</a>
-                        <button class="btn btn-success w-100 fw-bold" onclick="completeOrder(${o.id})">✅ Marcar Entregado</button>
-                    `;
+                        ${direccion ? `<a href="https://maps.google.com/?q=${encodeURIComponent(direccion)}" target="_blank" rel="noopener" class="btn btn-outline-dark w-100 fw-bold mb-2">🗺️ Abrir en GPS</a>` : ""}
+                        <button class="btn btn-success w-100 fw-bold" onclick="completeOrder(${o.id})">✅ Marcar Entregado</button>`;
             }
 
-            let itemsHtml = o.items
-              .map(
-                (i) =>
-                  `<small class="text-muted d-block">• ${i.qty}x ${i.product_name}</small>`,
-              )
+            const itemsHtml = (o.items || [])
+              .map((i) => `<small class="text-muted d-block">• ${i.qty}x ${esc(i.product_name)}</small>`)
               .join("");
 
             list.innerHTML += `
-                <div class="card order-card p-3 mb-3 ${o.kitchen_status === "on_the_way" ? "on-the-way" : ""}">
+                <div class="card order-card p-3 mb-3 ${mio ? "on-the-way" : ""}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong class="fs-5">Ticket #${o.id}</strong>
+                        <strong class="fs-5">Pedido #${o.id}</strong>
                         ${statusBadge}
                     </div>
-                    <div class="mb-2"><strong>Destino:</strong> ${o.table_name}</div>
+                    <div><strong>Cliente:</strong> ${esc(nombre) || "Sin nombre"}</div>
+                    ${o.customer_phone ? `<div><strong>Teléfono:</strong> <a href="tel:${esc(o.customer_phone)}">${esc(o.customer_phone)}</a></div>` : ""}
+                    <div class="mb-2"><strong>Dirección:</strong> ${esc(direccion) || "Pregunta en caja"}</div>
+                    ${o.notes ? `<div class="mb-2 small text-primary">${esc(o.notes)}</div>` : ""}
                     <div class="mb-3">${itemsHtml}</div>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="text-muted">A cobrar:</span>
-                        <strong class="fs-4 text-success">$${o.total_cop.toLocaleString("es-CO")}</strong>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">Cobrar al cliente:</span>
+                        <strong class="fs-4 text-success">$${((o.total_cop || 0) + (o.delivery_fee_cop || 0)).toLocaleString("es-CO")}</strong>
+                    </div>
+                    <div class="small text-muted mb-3">
+                        Productos $${(o.total_cop || 0).toLocaleString("es-CO")} + domicilio
+                        <b>$${(o.delivery_fee_cop || 0).toLocaleString("es-CO")}</b>${o.delivery_zone ? " (" + esc(o.delivery_zone) + ")" : ""}
+                        ${o.delivery_fee_cop ? "· <span class='text-success fw-bold'>tu pago: $" + o.delivery_fee_cop.toLocaleString("es-CO") + "</span>" : "· <span class='text-danger'>valor de domicilio sin definir, confirma en caja</span>"}
                     </div>
                     ${actionBtn}
                 </div>`;
@@ -144,31 +161,34 @@
 
       async function assignOrder(id) {
         if (!confirm("¿Aceptar este domicilio?")) return;
-        await fetch(`/api/delivery/assign/${id}`, {
+        const r = await fetch(`/api/delivery/accept/${id}`, {
           method: "POST",
           headers: { Authorization: "Bearer " + token },
         });
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          alert(d.detail || "No se pudo aceptar el pedido");
+        }
         loadOrders();
       }
 
       async function completeOrder(id) {
         if (!confirm("¿Confirmar entrega al cliente?")) return;
-        await fetch(`/api/delivery/complete/${id}`, {
+        const r = await fetch(`/api/delivery/complete/${id}`, {
           method: "POST",
           headers: { Authorization: "Bearer " + token },
         });
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          alert(d.detail || "No se pudo marcar como entregado");
+        }
         loadOrders();
-      }
-
-      function logout() {
-        localStorage.removeItem("token");
-        window.location.href = "index.html";
       }
 
       // Auto-refresh every 10 seconds
       setInterval(loadOrders, 10000);
       loadOrders();
     </script>
-    <script src="/core.js"></script>
+    <script src="core.js"></script>
   </body>
 </html>

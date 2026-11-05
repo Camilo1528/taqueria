@@ -18,7 +18,7 @@
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       }
       .header {
-        background: #dc3545;
+        background: var(--tp-primary);
         color: white;
         padding: 15px;
         position: sticky;
@@ -153,7 +153,8 @@
         font-size: 0.9rem;
       }
     </style>
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
+      <link rel="stylesheet" href="css/theme.css" />
   </head>
   <body onload="init()">
     <div class="header text-center">
@@ -208,6 +209,22 @@
             ></textarea>
           </div>
           <div class="mb-3">
+            <label class="form-label fw-bold">Indicaciones para llegar</label>
+            <input
+              class="form-control"
+              id="c_reference"
+              maxlength="200"
+              placeholder="Ej: casa esquinera de reja negra, frente al parque"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Zona de entrega *</label>
+            <select class="form-select" id="c_zone" required onchange="updateCartUI()">
+              <option value="">Cargando zonas…</option>
+            </select>
+            <div class="form-text">El valor del domicilio depende del recorrido y se suma al total.</div>
+          </div>
+          <div class="mb-3">
             <label class="form-label fw-bold">Método de Pago *</label>
             <select
               class="form-select"
@@ -235,8 +252,9 @@
           <span class="fs-5 fw-bold">Total a Pagar:</span>
           <span class="fs-4 fw-bold text-success" id="modal-total">$0</span>
         </div>
+        <div class="text-muted small text-end" id="modal-total-detail"></div>
         <button
-          class="btn btn-danger w-100 py-3 fs-5 fw-bold rounded-3"
+          class="btn btn-success w-100 py-3 fs-5 fw-bold"
           onclick="submitOrder()"
           id="submit-btn"
         >
@@ -259,6 +277,16 @@
 
       async function init() {
         try {
+          fetch("/api/delivery/zones")
+            .then((r) => r.json())
+            .then((zones) => {
+              document.getElementById("c_zone").innerHTML =
+                '<option value="">Selecciona tu zona…</option>' +
+                zones
+                  .map((z) => `<option value="${String(z.name).replace(/"/g, "&quot;")}" data-fee="${z.fee}">${z.name} — $${Number(z.fee).toLocaleString("es-CO")}</option>`)
+                  .join("");
+            })
+            .catch(() => {});
           const bRes = await fetch("/branding");
           const bData = await bRes.json();
           if (bData.whatsapp_number) WHATSAPP_NUM = bData.whatsapp_number;
@@ -326,8 +354,13 @@
           `${count} producto(s)`;
         document.getElementById("cart-total").innerText =
           `$${total.toLocaleString()}`;
+        const zoneSel = document.getElementById("c_zone");
+        const fee = zoneSel && zoneSel.value ? parseFloat(zoneSel.options[zoneSel.selectedIndex].dataset.fee) || 0 : 0;
         document.getElementById("modal-total").innerText =
-          `$${total.toLocaleString()}`;
+          `$${(total + fee).toLocaleString("es-CO")}`;
+        document.getElementById("modal-total-detail").innerText = zoneSel && zoneSel.value
+          ? `Productos $${total.toLocaleString("es-CO")} + domicilio $${fee.toLocaleString("es-CO")}`
+          : "Elige tu zona para ver el valor del domicilio";
       }
 
       function openCart() {
@@ -380,6 +413,11 @@
           return;
         }
 
+        const zone = document.getElementById("c_zone").value;
+        if (!zone) {
+          alert("Elige la zona de entrega para calcular el domicilio");
+          return;
+        }
         const name = document.getElementById("c_name").value;
         const phone = document.getElementById("c_phone").value;
         const address = document.getElementById("c_address").value;
@@ -398,6 +436,8 @@
               phone: phone,
               address: address,
               payment_method: payment,
+              zone: zone,
+              reference: document.getElementById("c_reference").value.trim() || null,
               items: items,
             }),
           });
@@ -407,7 +447,7 @@
             // Success!
             btn.style.display = "none";
             document.getElementById("cart-items").innerHTML =
-              `<div class="alert alert-success text-center"><h5>¡Pedido Confirmado!</h5><p>Tu orden ha sido enviada a la cocina.</p></div>`;
+              `<div class="alert alert-success text-center"><h5>¡Pedido Confirmado!</h5><p>Pedido #${data.order_id}. Tu orden ya está en cocina.<br>Total a pagar al recibir: <b>$${(data.total_con_envio || 0).toLocaleString("es-CO")}</b> (incluye domicilio $${(data.delivery_fee || 0).toLocaleString("es-CO")}).</p></div>`;
 
             if (payment === "transferencia") {
               const total = document.getElementById("modal-total").innerText;
@@ -435,6 +475,6 @@
         }
       }
     </script>
-    <script src="/core.js"></script>
+    <script src="core.js"></script>
   </body>
 </html>

@@ -35,7 +35,7 @@ class OfflineQueue {
       badge = document.createElement("div");
       badge.id = "offline-status-badge";
       badge.style.cssText =
-        "position:fixed;top:10px;right:10px;z-index:9999;padding:8px 16px;border-radius:20px;font-weight:bold;font-size:14px;transition:all 0.3s;box-shadow:0 2px 8px rgba(0,0,0,0.2);";
+        "position:fixed;bottom:16px;left:16px;z-index:9999;padding:6px 14px;border-radius:999px;font-weight:600;font-size:13px;transition:all 0.3s;box-shadow:0 2px 8px rgba(0,0,0,0.2);";
       document.body.appendChild(badge);
     }
     if (online) {

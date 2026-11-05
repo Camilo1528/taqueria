@@ -63,9 +63,10 @@
         }
       }
     </style>
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
+      <link rel="stylesheet" href="css/theme.css" />
   </head>
-  <body>
+  <body class="tp-dark">
     <div class="card-reader">
       <div class="icon pulse">📇</div>
       <h2 class="fw-bold mb-3">Control de Asistencia</h2>
@@ -81,9 +82,14 @@
           id="scanner"
           class="scanner-input"
           placeholder="Ingresa PIN..."
+          inputmode="numeric"
           autofocus
           autocomplete="off"
         />
+        <button type="button" class="btn btn-success btn-lg w-100 mt-3 fw-bold" onclick="submitPin()">
+          Registrar entrada / salida
+        </button>
+        <div class="text-muted small mt-2">Escribe tu PIN y toca el botón (o presiona Enter)</div>
       </div>
     </div>
 
@@ -97,6 +103,10 @@
 
       let lastScan = 0;
       let hideTimeout;
+
+      function submitPin() {
+        scannerInput.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter" }));
+      }
 
       scannerInput.addEventListener("keypress", async (e) => {
         if (e.key === "Enter") {
@@ -162,6 +172,6 @@
         }
       });
     </script>
-    <script src="/core.js"></script>
+    <script src="core.js"></script>
   </body>
 </html>

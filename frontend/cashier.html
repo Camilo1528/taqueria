@@ -6,34 +6,24 @@
     <title>Caja - Taquería Pro</title>
     <link href="libs/bootstrap.min.css" rel="stylesheet" />
     <style>
-      body {
-        background-color: #f3f4f6;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      }
-      .pos-header {
-        background-color: #1f2937;
-        color: white;
-        padding: 1rem;
-      }
       .order-card {
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         margin-bottom: 1rem;
-        cursor: pointer;
-        transition: transform 0.2s;
       }
-      .order-card:hover {
-        transform: scale(1.02);
+      .order-card.selected {
+        border-color: var(--tp-primary, #6366f1) !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
       }
       .pay-btn {
         width: 100%;
-        font-size: 1.2rem;
-        font-weight: bold;
-        padding: 15px;
+        font-weight: 700;
         margin-bottom: 10px;
-        border-radius: 10px;
-        transition: transform 0.1s;
+      }
+      .cashier-actions .btn {
+        white-space: nowrap;
+      }
+      #order-total {
+        font-size: 2.2rem !important;
+        letter-spacing: -0.02em;
       }
       .pay-btn:active {
         transform: scale(0.95);
@@ -85,243 +75,8 @@
     </style>
 
     <link rel="manifest" href="manifest.json" />
-    <script src="js/offline-queue.js">
-      function openDianModal() {
-          if(!currentSelectedOrder) return;
-          document.getElementById('dian-modal').style.display = 'block';
-      }
-
-      async function generateDianInvoice() {
-          if(!currentSelectedOrder) return;
-          const doc_type = document.getElementById('dian-doc-type').value;
-          const doc_num = document.getElementById('dian-doc-num').value;
-          const name = document.getElementById('dian-name').value;
-          const email = document.getElementById('dian-email').value;
-
-          if(!doc_num || !name) {
-              alert('Por favor ingresa número de documento y nombre.');
-              return;
-          }
-
-          const payload = {
-              order_id: currentSelectedOrder.id,
-              document_type: doc_type,
-              document_number: doc_num,
-              name: name,
-              email: email
-          };
-
-          try {
-              const token = localStorage.getItem('token');
-              const res = await fetch('/api/dian/invoice', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': 'Bearer ' + token
-                  },
-                  body: JSON.stringify(payload)
-              });
-              const result = await res.json();
-              if (res.ok) {
-            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
-                  alert(`Factura FEV generada (${result.invoice_number}) - CUFE: ${result.cufe}\n¡Ahora puedes proceder a cobrar la orden!`);
-                  document.getElementById('dian-modal').style.display = 'none';
-                  loadData(); // To refresh order notes
-              } else {
-                  alert('Error al generar factura DIAN: ' + (result.detail || 'Error desconocido'));
-              }
-          } catch(e) {
-              alert('Error de conexión con la DIAN.');
-          }
-      }
-
-
-      async function loadReservations() {
-          try {
-              const token = localStorage.getItem('token');
-              const res = await fetch('/api/reservations', { headers: { 'Authorization': 'Bearer ' + token } });
-              const data = await res.json();
-
-              const tbody = document.getElementById('reservations-list');
-              tbody.innerHTML = '';
-              data.forEach(r => {
-                  const statusBadge = r.status === 'pending' ? '<span class="badge bg-warning text-dark">Pendiente</span>' :
-                                    (r.status === 'arrived' ? '<span class="badge bg-success">Llegó</span>' : '<span class="badge bg-secondary">Cancelada</span>');
-
-                  tbody.innerHTML += `
-                      <tr>
-                          <td>${r.res_date}</td>
-                          <td>${r.res_time}</td>
-                          <td class="fw-bold">${r.name}</td>
-                          <td>${r.phone || '-'}</td>
-                          <td><span class="badge bg-primary rounded-pill">${r.guests}</span></td>
-                          <td>${statusBadge}</td>
-                          <td>
-                              ${r.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="updateReservation(${r.id}, 'arrived')">Llegó</button>` : ''}
-                          </td>
-                      </tr>
-                  `;
-              });
-              document.getElementById('reservations-modal').style.display = 'block';
-          } catch(e) {
-              alert("Error al cargar reservas.");
-          }
-      }
-
-      async function updateReservation(id, status) {
-          try {
-              const token = localStorage.getItem('token');
-              await fetch(`/api/reservations/${id}/status`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                  body: JSON.stringify({status})
-              });
-              loadReservations();
-          } catch(e) {}
-      }
-    </script>
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((reg) => {
-            console.log("SW registered");
-            // Registrar Background Sync
-            if ("sync" in reg) {
-              reg.sync
-                .register("sync-pending-operations")
-                .catch((e) => console.log("BG Sync not available"));
-            }
-          })
-          .catch((err) => console.log("SW failed", err));
-
-        // Escuchar mensajes del SW (sync completado)
-        navigator.serviceWorker.addEventListener("message", (event) => {
-          if (event.data && event.data.type === "SYNC_COMPLETE") {
-            loadData(); // Recargar datos tras sincronización
-          }
-        });
-      }
-      if (localStorage.getItem("theme") === "dark") {
-        document.documentElement.classList.add("dark-mode");
-      }
-      function toggleTheme() {
-        if (document.documentElement.classList.contains("dark-mode")) {
-          document.documentElement.classList.remove("dark-mode");
-          localStorage.setItem("theme", "light");
-        } else {
-          document.documentElement.classList.add("dark-mode");
-          localStorage.setItem("theme", "dark");
-        }
-      }
-
-      function openDianModal() {
-        if (!currentSelectedOrder) return;
-        document.getElementById("dian-modal").style.display = "block";
-      }
-
-      async function generateDianInvoice() {
-        if (!currentSelectedOrder) return;
-        const doc_type = document.getElementById("dian-doc-type").value;
-        const doc_num = document.getElementById("dian-doc-num").value;
-        const name = document.getElementById("dian-name").value;
-        const email = document.getElementById("dian-email").value;
-
-        if (!doc_num || !name) {
-          alert("Por favor ingresa número de documento y nombre.");
-          return;
-        }
-
-        const payload = {
-          order_id: currentSelectedOrder.id,
-          document_type: doc_type,
-          document_number: doc_num,
-          name: name,
-          email: email,
-        };
-
-        try {
-          const token = localStorage.getItem("token");
-          const res = await fetch("/api/dian/invoice", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + token,
-            },
-            body: JSON.stringify(payload),
-          });
-          const result = await res.json();
-          if (res.ok) {
-            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
-            alert(
-              `Factura FEV generada (${result.invoice_number}) - CUFE: ${result.cufe}\n¡Ahora puedes proceder a cobrar la orden!`,
-            );
-            document.getElementById("dian-modal").style.display = "none";
-            loadData(); // To refresh order notes
-          } else {
-            alert(
-              "Error al generar factura DIAN: " +
-                (result.detail || "Error desconocido"),
-            );
-          }
-        } catch (e) {
-          alert("Error de conexión con la DIAN.");
-        }
-      }
-
-      async function loadReservations() {
-        try {
-          const token = localStorage.getItem("token");
-          const res = await fetch("/api/reservations", {
-            headers: { Authorization: "Bearer " + token },
-          });
-          const data = await res.json();
-
-          const tbody = document.getElementById("reservations-list");
-          tbody.innerHTML = "";
-          data.forEach((r) => {
-            const statusBadge =
-              r.status === "pending"
-                ? '<span class="badge bg-warning text-dark">Pendiente</span>'
-                : r.status === "arrived"
-                  ? '<span class="badge bg-success">Llegó</span>'
-                  : '<span class="badge bg-secondary">Cancelada</span>';
-
-            tbody.innerHTML += `
-                    <tr>
-                        <td>${r.res_date}</td>
-                        <td>${r.res_time}</td>
-                        <td class="fw-bold">${r.name}</td>
-                        <td>${r.phone || "-"}</td>
-                        <td><span class="badge bg-primary rounded-pill">${r.guests}</span></td>
-                        <td>${statusBadge}</td>
-                        <td>
-                            ${r.status === "pending" ? `<button class="btn btn-sm btn-success" onclick="updateReservation(${r.id}, 'arrived')">Llegó</button>` : ""}
-                        </td>
-                    </tr>
-                `;
-          });
-          document.getElementById("reservations-modal").style.display = "block";
-        } catch (e) {
-          alert("Error al cargar reservas.");
-        }
-      }
-
-      async function updateReservation(id, status) {
-        try {
-          const token = localStorage.getItem("token");
-          await fetch(`/api/reservations/${id}/status`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + token,
-            },
-            body: JSON.stringify({ status }),
-          });
-          loadReservations();
-        } catch (e) {}
-      }
-    </script>
+    <script src="js/offline-queue.js"></script>
+      <link rel="stylesheet" href="css/theme.css" />
   </head>
   <body>
     <div class="pos-header d-flex justify-content-between align-items-center">
@@ -337,7 +92,6 @@
         </button>
         <img
           id="brand-logo"
-          src=""
           style="
             height: 30px;
             margin-right: 10px;
@@ -346,19 +100,19 @@
             border-radius: 4px;
           "
         />
-        <span class="fs-5" id="brand-name">Cargando...</span>
+        <span class="fs-5" id="brand-name"></span>
       </div>
     </div>
 
     <div class="container-fluid mt-4">
       <div class="row">
         <!-- Lista de Órdenes -->
-        <div class="col-md-7">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="m-0">Mesas con Pedidos</h4>
-            <div>
+        <div class="col-lg-7 col-xl-8">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <h4 class="m-0 fw-bold">Cuentas abiertas <span class="badge bg-secondary align-middle" id="open-count">0</span></h4>
+            <div class="d-flex flex-wrap gap-2 cashier-actions">
               <button
-                class="btn btn-outline-success fw-bold me-2"
+                class="btn btn-outline-success fw-bold"
                 onclick="
                   document.getElementById('delivery-modal').style.display =
                     'block'
@@ -367,7 +121,7 @@
                 🛵 Nuevo Domicilio
               </button>
               <button
-                class="btn btn-outline-danger fw-bold me-2"
+                class="btn btn-outline-danger fw-bold"
                 onclick="
                   document.getElementById('expense-modal').style.display =
                     'block'
@@ -376,13 +130,13 @@
                 💸 Salida / Gasto
               </button>
               <button
-                class="btn btn-outline-warning fw-bold me-2"
+                class="btn btn-outline-warning fw-bold"
                 onclick="showVenderBonoModal()"
               >
                 🎁 Vender Bono
               </button>
               <button
-                class="btn btn-outline-primary fw-bold me-2"
+                class="btn btn-outline-primary fw-bold"
                 id="toggle-view-btn"
                 onclick="toggleView()"
               >
@@ -423,11 +177,11 @@
         </div>
 
         <!-- Detalle de Orden Actual y Pago -->
-        <div class="col-md-5">
+        <div class="col-lg-5 col-xl-4">
           <div
-            class="card shadow-sm p-4 h-100 bg-white"
+            class="card shadow-sm p-4 bg-white payment-panel"
             id="payment-panel"
-            style="display: none"
+            style="display: none; position: sticky; top: 16px"
           >
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h4 class="fw-bold m-0" id="current-table-name">
@@ -443,9 +197,10 @@
                   )
                 "
               >
-                ??? Imprimir Ticket
+                🖨️ Imprimir Ticket
               </button>
             </div>
+            <div id="delivery-info" class="mb-3" style="display: none"></div>
             <div style="max-height: 300px; overflow-y: auto" class="mb-3">
               <ul class="list-group list-group-flush" id="order-items-list">
                 <!-- Items -->
@@ -454,11 +209,12 @@
             <div
               class="d-flex justify-content-between align-items-center mb-4 border-top pt-3"
             >
-              <span class="fs-4">TOTAL:</span>
+              <span class="fs-4" id="order-total-label">TOTAL:</span>
               <span class="fs-2 fw-bold text-success" id="order-total">$0</span>
             </div>
+            <div id="order-total-detail" class="text-muted small text-end mb-3" style="margin-top: -18px"></div>
 
-            <h5 class="mb-3">Método de Pago</h5>
+            <h6 class="mb-2 text-uppercase fw-bold" style="color:var(--tp-muted);font-size:.78rem;letter-spacing:.06em">Datos del cobro</h6>
 
             <div class="mb-3">
               <label class="form-label">Propina Sugerida (10%)</label>
@@ -474,20 +230,21 @@
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Teléfono Cliente (Fidelización)</label>
+              <label class="form-label">Cliente frecuente: cédula o teléfono (opcional)</label>
               <div class="input-group">
                 <input
                   type="text"
+                  inputmode="numeric"
                   class="form-control"
                   id="customer-phone"
-                  placeholder="Opcional"
-                  oninput="checkPoints()"
+                  placeholder="Ej: 1020304050 o 3001234567"
+                  oninput="clearTimeout(window.__lt); window.__lt = setTimeout(checkPoints, 400)"
                 />
                 <button
                   class="btn btn-outline-secondary"
                   onclick="checkPoints()"
                 >
-                  Checar
+                  Buscar
                 </button>
               </div>
               <small
@@ -496,35 +253,51 @@
               ></small>
             </div>
 
-            <button
-              class="btn btn-success pay-btn"
-              onclick="processPayment('efectivo')"
-            >
-              💵 Efectivo
-            </button>
-            <button
-              class="btn btn-primary pay-btn"
-              onclick="processPayment('tarjeta')"
-            >
-              💳 Tarjeta
-            </button>
-            <button
-              class="btn btn-warning pay-btn"
-              onclick="processPayment('puntos')"
-            >
-              ⭐ Puntos Fidelidad
-            </button>
+            <div class="d-grid gap-2" style="grid-template-columns: 1fr 1fr">
+              <button
+                class="btn btn-success pay-btn"
+                onclick="processPayment('efectivo')"
+              >
+                💵 Efectivo
+              </button>
+              <button
+                class="btn btn-primary pay-btn"
+                onclick="processPayment('tarjeta')"
+              >
+                💳 Tarjeta
+              </button>
+            </div>
+            <!-- Solo visible si el administrador activó la facturación DIAN en Configuración -->
             <button
               class="btn btn-dark pay-btn w-100 mt-2"
+              id="btn-dian"
               onclick="openDianModal()"
+              style="display: none"
             >
               🧾 Factura Electrónica (DIAN)
             </button>
             <button
               class="btn btn-info pay-btn text-white w-100 mt-2"
-              onclick="payWithBono()"
+              id="btn-bono"
+              onclick="toggleBonoBox()"
             >
-              🎁 Canjear Bono Regalo
+              🎁 Pagar con bono / tarjeta de regalo
+            </button>
+            <div id="bono-box" class="border rounded-3 p-3 mt-2" style="display: none; background: #ecfeff">
+              <label class="form-label fw-bold mb-1">Código del bono</label>
+              <div class="input-group">
+                <input type="text" class="form-control text-uppercase" id="bono-code" placeholder="BONO-XXXXXX o HBAY-XXXXX" />
+                <button class="btn btn-info text-white fw-bold" onclick="payWithBono()">Aplicar</button>
+              </div>
+              <div class="small text-muted mt-1">Si el bono no alcanza, el resto se cobra con efectivo o tarjeta.</div>
+            </div>
+            <button
+              class="btn btn-secondary pay-btn w-100 mt-2"
+              id="btn-donacion"
+              style="display: none"
+              onclick="registerDonation()"
+            >
+              🤝 Registrar donación (sin cobro)
             </button>
           </div>
           <div id="no-selection" class="text-center p-5 text-muted">
@@ -560,6 +333,15 @@
                 value="50000"
               />
             </div>
+            <label>¿Cómo paga el cliente?</label>
+            <select class="form-select mb-2" id="bono-method">
+              <option value="efectivo">Efectivo (entra a la caja)</option>
+              <option value="tarjeta">Tarjeta</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="nequi">Nequi</option>
+              <option value="daviplata">Daviplata</option>
+            </select>
+            <div class="small text-muted">El dinero del bono se registra hoy en la contabilidad; cuando el cliente lo use no se vuelve a contar.</div>
           </div>
           <div class="modal-footer">
             <button
@@ -1020,24 +802,22 @@
         });
 
         // Handle queued_offline or direct ok
-        if (
-          isOffline ||
-          res.ok ||
-          (await res.json()).status === "queued_offline"
-        ) {
-          if (isOffline) {
-            alert(
-              "Sin conexión. Gasto guardado localmente, se sincronizará luego.",
-            );
+        let body = {};
+        try {
+          body = await res.clone().json();
+        } catch (e) {}
+        if (isOffline || res.ok || body.status === "queued_offline") {
+          if (isOffline || body.status === "queued_offline") {
+            toast("Sin conexión. Gasto guardado; se enviará al volver internet.", "warning");
             await updatePendingBadge();
           } else {
-            alert("Gasto registrado con éxito");
+            toast(`Gasto registrado: $${amount.toLocaleString("es-CO")} — ${desc}`);
           }
           document.getElementById("expense-desc").value = "";
           document.getElementById("expense-amount").value = "0";
           document.getElementById("expense-modal").style.display = "none";
         } else {
-          alert("Error al registrar gasto");
+          toast(typeof body.detail === "string" ? body.detail : "No se pudo registrar el gasto. Revisa la descripción y el monto.", "error");
         }
       }
 
@@ -1054,9 +834,14 @@
           // Verificar estado de caja (con cache offline)
           const sRes = await offlineQueue.fetchWithOffline(
             "/api/shift/status",
-            {},
+            { headers: { Authorization: "Bearer " + token } },
             "shift_status",
           );
+          if (sRes.status === 401) {
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+            return;
+          }
           shiftData = await sRes.json();
           if (shiftData.status === "closed") {
             document.getElementById("shift-open-modal").style.display = "block";
@@ -1078,6 +863,7 @@
             logoImg.style.display = "block";
           }
           numTables = parseInt(bData.num_tables) || 6;
+          document.getElementById("btn-dian").style.display = bData.dian_enabled ? "" : "none";
           if (bData.loyalty_enabled === false) { if(document.getElementById("loyalty-ui-container")) document.getElementById("loyalty-ui-container").style.display = "none"; }
 
           // Cargar Órdenes (con cache offline)
@@ -1105,7 +891,7 @@
             badge = document.createElement("button");
             badge.id = "pending-sync-badge";
             badge.style.cssText =
-              "position:fixed;bottom:20px;left:20px;z-index:9999;background:#f59e0b;color:white;border:none;border-radius:20px;padding:8px 16px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);";
+              "position:fixed;bottom:56px;left:16px;z-index:9999;background:#f59e0b;color:white;border:none;border-radius:20px;padding:8px 16px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);";
             badge.onclick = () =>
               offlineQueue.syncAll().then(updatePendingBadge);
             document.body.appendChild(badge);
@@ -1129,7 +915,6 @@
           body: JSON.stringify({ base_cash: baseCash }),
         });
         if (res.ok) {
-            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
           document.getElementById("shift-open-modal").style.display = "none";
           loadData();
         } else {
@@ -1161,6 +946,7 @@
         container.innerHTML = "";
         mapContainer.innerHTML = "";
 
+        document.getElementById("open-count").innerText = openOrders.length;
         if (openOrders.length === 0) {
           container.innerHTML =
             '<div class="col-12"><div class="alert alert-info">No hay mesas con pedidos pendientes.</div></div>';
@@ -1172,13 +958,17 @@
         // Render List
         openOrders.forEach((o) => {
           const html = `
-            <div class="col-md-6">
-                <div class="order-card p-3 border-start border-4 border-primary" onclick="selectOrder(${o.id})">
+            <div class="col-sm-6 col-xxl-4">
+                <div class="order-card p-3 border-start border-4 border-primary ${currentSelectedOrder && currentSelectedOrder.id === o.id ? "selected" : ""}" onclick="selectOrder(${o.id})">
                     <div class="d-flex justify-content-between">
-                        <h5 class="fw-bold m-0">${o.table_name || "Mesa " + o.table_number}</h5>
-                        <span class="badge bg-secondary">${o.items.length} items</span>
+                        <div>
+                          <h5 class="fw-bold m-0">${isDelivery(o) ? "🛵 " : ""}${escH(o.table_name || "Mesa " + o.table_number)}</h5>
+                          ${isDelivery(o) ? `<div class="small text-muted">${escH(o.delivery_address || "Sin dirección")}${o.customer_phone ? " · " + escH(o.customer_phone) : ""}</div>` : ""}
+                        </div>
+                        <span class="badge bg-secondary text-nowrap flex-shrink-0 ms-2 align-self-start">${o.items.length === 1 ? "1 producto" : o.items.length + " productos"}</span>
                     </div>
-                    <h4 class="mt-3 text-end text-success fw-bold">$${o.total_cop.toLocaleString("es-CO")}</h4>
+                    <h4 class="mt-3 text-end text-success fw-bold">$${(o.total_cop + (isDelivery(o) ? o.delivery_fee_cop || 0 : 0)).toLocaleString("es-CO")}</h4>
+                    ${isDelivery(o) && o.delivery_fee_cop ? `<div class="text-end small text-muted" style="margin-top:-6px">incluye domicilio $${o.delivery_fee_cop.toLocaleString("es-CO")}</div>` : ""}
                 </div>
             </div>`;
           container.innerHTML += html;
@@ -1189,7 +979,7 @@
           const mapHtml = `
             <div class="card text-center text-white bg-danger shadow cursor-pointer" style="width: 120px; height: 120px; cursor: pointer; transition: 0.2s;" onclick="selectOrder(${o.id})" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
                 <div class="card-body d-flex flex-column justify-content-center align-items-center">
-                    <h4 class="fw-bold m-0">${o.table_name || o.table_number}</h4>
+                    <h4 class="fw-bold m-0">${escH(o.table_name || o.table_number)}</h4>
                     <small>$${o.total_cop.toLocaleString("es-CO")}</small>
                 </div>
             </div>`;
@@ -1220,14 +1010,32 @@
 
       function selectOrder(orderId) {
         currentSelectedOrder = openOrders.find((o) => o.id === orderId);
+        renderOrders(); // resalta la cuenta seleccionada
         document.getElementById("no-selection").style.display = "none";
         document.getElementById("payment-panel").style.display = "block";
 
         document.getElementById("current-table-name").innerText =
           currentSelectedOrder.table_name ||
           "Mesa " + currentSelectedOrder.table_number;
-        document.getElementById("order-total").innerText =
-          "$" + currentSelectedOrder.total_cop.toLocaleString("es-CO");
+        renderDeliveryInfo();
+        const don = isDonation(currentSelectedOrder);
+        document.getElementById("btn-donacion").style.display = don ? "block" : "none";
+        // En una donación solo se muestra "Registrar donación"; en las demás, efectivo / tarjeta / bono
+        const cobro = [
+          ...document.querySelectorAll("#payment-panel [onclick=\"processPayment('efectivo')\"], #payment-panel [onclick=\"processPayment('tarjeta')\"]"),
+          document.getElementById("btn-bono"),
+        ];
+        cobro.forEach((b) => (b.style.display = don ? "none" : ""));
+        // Propina y cliente frecuente no aplican a una donación
+        document.getElementById("tip-amount").closest(".mb-3").style.display = don ? "none" : "";
+        document.getElementById("customer-phone").closest(".mb-3").style.display = don ? "none" : "";
+        if (don) {
+          document.getElementById("current-table-name").innerText = "🤝 Donación";
+          document.getElementById("order-total-detail").innerText = "No se cobra. Al registrarla se descuenta el inventario y queda en contabilidad.";
+        }
+        document.getElementById("bono-box").style.display = "none";
+        document.getElementById("loyalty-info").innerHTML = "";
+        document.getElementById("customer-phone").value = "";
 
         // Auto-calcular propina sugerida (10%)
         const tipSugerida = currentSelectedOrder.total_cop * 0.1;
@@ -1237,11 +1045,11 @@
         list.innerHTML = "";
         currentSelectedOrder.items.forEach((item, idx) => {
           const notesHtml = item.notes
-            ? `<div class="text-danger small fw-bold mt-1">📝 ${item.notes}</div>`
+            ? `<div class="text-danger small fw-bold mt-1">📝 ${escH(item.notes)}</div>`
             : "";
           list.innerHTML += `<li class="list-group-item">
                 <div class="d-flex justify-content-between align-items-center">
-                    <span>${item.qty}x ${item.product_name}</span>
+                    <span>${item.qty}x ${escH(item.product_name)}</span>
                     <div class="d-flex gap-2 align-items-center">
                         <span>$${item.total_cop.toLocaleString("es-CO")}</span>
                         <button class="btn btn-sm btn-outline-secondary py-0" onclick="openModifierModal(${idx})" title="Modificadores">📝</button>
@@ -1252,55 +1060,210 @@
         });
       }
 
+      // ===== DOMICILIOS: datos de entrega y valor del envío =====
+      let deliveryZones = [];
+      const escH = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      const copF = (n) => "$" + Math.round(n || 0).toLocaleString("es-CO");
+      const isDelivery = (o) => !!o && (o.is_delivery == 1 || String(o.table_name || "").startsWith("Domicilio"));
+
+      async function loadZones() {
+        try {
+          deliveryZones = await (await fetch("/api/delivery/zones")).json();
+        } catch (e) {
+          deliveryZones = [];
+        }
+        const opts = '<option value="">Elegir zona…</option>' +
+          deliveryZones.map((z) => `<option value="${escH(z.name)}" data-fee="${z.fee}">${escH(z.name)} — ${copF(z.fee)}</option>`).join("");
+        const sel = document.getElementById("del-zone");
+        if (sel) sel.innerHTML = opts;
+      }
+      loadZones();
+
+      function currentFee() {
+        const inp = document.getElementById("delivery-fee-input");
+        if (inp) return Math.max(0, parseFloat(inp.value) || 0);
+        return currentSelectedOrder ? currentSelectedOrder.delivery_fee_cop || 0 : 0;
+      }
+
+      function updateTotalWithFee() {
+        const o = currentSelectedOrder;
+        if (!o) return;
+        const fee = isDelivery(o) ? currentFee() : 0;
+        document.getElementById("order-total-label").innerText = fee ? "TOTAL A COBRAR:" : "TOTAL:";
+        const yaBono = o.voucher_amount_cop || 0;
+        document.getElementById("order-total").innerText = copF(Math.max(0, o.total_cop + fee - yaBono));
+        const partes = [];
+        if (fee) partes.push(`Productos ${copF(o.total_cop)} + domicilio ${copF(fee)} (el domicilio es para el domiciliario)`);
+        if (yaBono) partes.push(`Ya pagado con bono: ${copF(yaBono)}`);
+        document.getElementById("order-total-detail").innerText = partes.join(" · ");
+        pushCFD(o, Math.max(0, o.total_cop + fee - yaBono));
+      }
+
+      // Pantalla del cliente (segundo monitor): muestra la cuenta que se está cobrando
+      let cfdTimer = null;
+      function pushCFD(o, total) {
+        clearTimeout(cfdTimer);
+        cfdTimer = setTimeout(() => {
+          const body = o
+            ? { order_id: o.id, table: o.table_name || "Mesa " + o.table_number, total: total ?? o.total_cop,
+                items: (o.items || []).map((i) => ({ qty: i.qty, product_name: i.product_name, total_cop: i.total_cop })) }
+            : { order_id: null, items: [], total: 0 };
+          fetch("/api/cfd_update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") },
+            body: JSON.stringify(body),
+          }).catch(() => {});
+        }, 150);
+      }
+
+      function renderDeliveryInfo() {
+        const o = currentSelectedOrder;
+        const box = document.getElementById("delivery-info");
+        if (!isDelivery(o)) {
+          box.style.display = "none";
+          box.innerHTML = "";
+          updateTotalWithFee();
+          return;
+        }
+        const nombre = o.customer_name || String(o.table_name || "").replace(/^Domicilio - /, "");
+        const zonaOpts = deliveryZones
+          .map((z) => `<option value="${escH(z.name)}" data-fee="${z.fee}" ${z.name === o.delivery_zone ? "selected" : ""}>${escH(z.name)} — ${copF(z.fee)}</option>`)
+          .join("");
+        box.style.display = "block";
+        box.innerHTML = `
+          <div class="border border-warning rounded-3 p-3" style="background:#fffbeb">
+            <div class="fw-bold mb-2">🛵 Datos de entrega</div>
+            <div><b>Cliente:</b> ${escH(nombre) || "<span class='text-danger'>Sin nombre</span>"}</div>
+            <div><b>Teléfono:</b> ${o.customer_phone ? `<a href="tel:${escH(o.customer_phone)}">${escH(o.customer_phone)}</a>` : "<span class='text-danger fw-bold'>Falta el teléfono</span>"}</div>
+            <div><b>Dirección:</b> ${o.delivery_address ? escH(o.delivery_address) : "<span class='text-danger fw-bold'>Falta la dirección</span>"}</div>
+            ${o.notes ? `<div class="small text-muted mt-1">${escH(o.notes)}</div>` : ""}
+            <div class="row g-2 mt-2 align-items-end">
+              <div class="col-7">
+                <label class="form-label small mb-1">Zona / recorrido</label>
+                <select class="form-select form-select-sm" id="delivery-zone-select" onchange="onZoneChange()">
+                  <option value="">Valor manual</option>${zonaOpts}
+                </select>
+              </div>
+              <div class="col-5">
+                <label class="form-label small mb-1">Valor domicilio</label>
+                <input type="number" min="0" step="500" class="form-control form-control-sm" id="delivery-fee-input"
+                  value="${o.delivery_fee_cop || 0}" oninput="updateTotalWithFee()" />
+              </div>
+            </div>
+            <button class="btn btn-sm btn-warning w-100 mt-2 fw-bold" onclick="saveDeliveryFee()">Guardar valor del domicilio</button>
+            <div class="small text-muted mt-1">Guárdalo antes de que salga el domiciliario para que lo vea en su celular.</div>
+          </div>`;
+        updateTotalWithFee();
+      }
+
+      function onZoneChange() {
+        const sel = document.getElementById("delivery-zone-select");
+        const opt = sel.options[sel.selectedIndex];
+        if (opt && opt.dataset.fee !== undefined) document.getElementById("delivery-fee-input").value = opt.dataset.fee;
+        updateTotalWithFee();
+      }
+
+      async function saveDeliveryFee() {
+        const o = currentSelectedOrder;
+        const fee = currentFee();
+        const zone = document.getElementById("delivery-zone-select").value || null;
+        const res = await fetch(`/api/delivery/${o.id}/fee`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") },
+          body: JSON.stringify({ fee, zone }),
+        });
+        const d = await res.json().catch(() => ({}));
+        if (res.ok) {
+          o.delivery_fee_cop = fee;
+          o.delivery_zone = zone;
+          toast("Valor del domicilio guardado: " + copF(fee));
+        } else toast(typeof d.detail === "string" ? d.detail : "No se pudo guardar el valor", "error");
+      }
+
       let currentCustomerPoints = 0;
 
       let availableRewards = [];
       async function checkPoints() {
-        const cedula = document.getElementById("customer-phone").value.trim();
+        const ident = document.getElementById("customer-phone").value.replace(/\D/g, "");
+        const box = document.getElementById("loyalty-info");
         currentCustomerPoints = 0;
-        if (!cedula) {
-          document.getElementById("loyalty-info").innerHTML = "";
+        if (ident.length < 6) {
+          box.innerHTML = "";
           return;
         }
         try {
           const token = localStorage.getItem("token");
-          const res = await fetch("/api/loyalty/" + cedula, {
-            headers: { Authorization: "Bearer " + token },
-          });
-          const data = await res.json();
-          if (data.points >= 10) {
-            currentCustomerPoints = data.points;
-            
-            // fetch rewards
-            const rRes = await fetch("/api/loyalty/rewards", { headers: { Authorization: "Bearer " + token }});
-            availableRewards = await rRes.json();
-            
-            let rewardOptions = availableRewards.map(r => `<option value="${r.id}">${r.name}</option>`).join("");
-            
-            document.getElementById("loyalty-info").innerHTML = `
-                    <div class="alert alert-info py-2 my-2" style="font-size:14px;">
-                        <strong>🎉 ¡Cliente Fidelizado!</strong> Tiene ${data.points} compras.<br>
-                        ¡Puede canjear una recompensa!
-                        <div class="input-group mt-2">
-                            <select id="reward-select" class="form-select form-select-sm">
-                                <option value="">-- No canjear --</option>
-                                ${rewardOptions}
-                            </select>
-                        </div>
-                    </div>
-                `;
-          } else if (data.points > 0) {
-            currentCustomerPoints = data.points;
-            document.getElementById("loyalty-info").innerHTML = `
-                    <div class="alert alert-secondary py-2 my-2" style="font-size:14px;">
-                        <strong>Cliente Fidelizado</strong><br>
-                        Tiene ${data.points} compras (Faltan ${10 - data.points} para recompensa).
-                    </div>
-                `;
-          } else {
-            document.getElementById("loyalty-info").innerText = "";
+          const data = await (await fetch("/api/loyalty/lookup/" + ident, { headers: { Authorization: "Bearer " + token } })).json();
+          currentCustomerPoints = data.points || 0;
+          if (!data.found) {
+            box.innerHTML = `<div class="alert alert-light border py-2 my-2" style="font-size:14px">
+              Cliente nuevo. Al cobrar se registra y gana su <b>primera compra</b> (1 de 10).
+              <input class="form-control form-control-sm mt-2" id="customer-name" placeholder="Nombre del cliente (opcional)" />
+            </div>`;
+            return;
           }
-        } catch (e) {}
+          const nombre = data.name ? escH(data.name) : "Cliente";
+          const barra = `<div class="progress my-1" style="height:8px"><div class="progress-bar bg-warning" style="width:${Math.min(100, data.points * 10)}%"></div></div>`;
+          if (data.can_redeem) {
+            availableRewards = await (await fetch("/api/loyalty/rewards")).json();
+            const opts = availableRewards.map((r) => `<option value="${r.id}">${escH(r.name)}</option>`).join("");
+            box.innerHTML = `<div class="alert alert-warning py-2 my-2" style="font-size:14px">
+              <strong>🎉 ${nombre}: ${data.points} compras</strong> — ¡ya puede reclamar su premio!${barra}
+              ${availableRewards.length
+                ? `<select id="reward-select" class="form-select form-select-sm mt-2">
+                     <option value="">No canjear todavía (suma 1 compra más)</option>${opts}
+                   </select>
+                   <div class="small mt-1">El producto elegido se agrega <b>gratis</b> a esta cuenta y se descuentan 10 compras.</div>`
+                : `<div class="small mt-1 text-danger">No hay productos marcados como recompensa. Pídele al administrador que los configure.</div>`}
+            </div>`;
+          } else {
+            box.innerHTML = `<div class="alert alert-secondary py-2 my-2" style="font-size:14px">
+              <strong>${nombre}</strong>: ${data.points} de 10 compras ${barra}
+              Le ${data.points_needed === 1 ? "falta 1 compra" : "faltan " + data.points_needed + " compras"} para su premio. Esta compra suma 1.
+            </div>`;
+          }
+        } catch (e) {
+          box.innerHTML = "";
+        }
+      }
+
+      // ---------- Bonos / tarjetas de regalo ----------
+      function toggleBonoBox() {
+        const b = document.getElementById("bono-box");
+        b.style.display = b.style.display === "none" ? "block" : "none";
+        if (b.style.display === "block") document.getElementById("bono-code").focus();
+      }
+
+      async function payWithBono() {
+        const o = currentSelectedOrder;
+        const code = document.getElementById("bono-code").value.trim().toUpperCase();
+        if (!o || !code) return toast("Escribe el código del bono", "error");
+        if (isDelivery(o) && document.getElementById("delivery-fee-input")) await saveDeliveryFee();
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/pos/pay_voucher", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+          body: JSON.stringify({ order_id: o.id, code }),
+        });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) return toast(typeof d.detail === "string" ? d.detail : "No se pudo usar el bono", "error");
+        document.getElementById("bono-code").value = "";
+        o.voucher_amount_cop = (o.voucher_amount_cop || 0) + d.applied;
+        if (d.covered) {
+          toast(`Bono aplicado: ${copF(d.applied)}. Cuenta pagada completa. Saldo que le queda al bono: ${copF(d.voucher_balance)}`);
+          await processPayment("bono");
+        } else {
+          toast(`Bono aplicado: ${copF(d.applied)}. Falta cobrar ${copF(d.remaining)} con efectivo o tarjeta.`, "warning");
+          updateTotalWithFee();
+        }
+      }
+
+      // ---------- Donaciones ----------
+      const isDonation = (o) => !!o && String(o.table_name || "") === "Donacion";
+      async function registerDonation() {
+        if (!confirm("¿Registrar esta orden como donación? No se cobra, pero sí descuenta inventario.")) return;
+        document.getElementById("tip-amount").value = "0";
+        await processPayment("donacion");
       }
 
       async function processPayment(method) {
@@ -1317,12 +1280,23 @@
         const payload = {
           order_id: currentSelectedOrder.id,
           method: method,
-          cedula: phone || null,
+          cedula: phone ? phone.replace(/\D/g, "") : null,
           redeemed_product_id: document.getElementById("reward-select") && document.getElementById("reward-select").value ? parseInt(document.getElementById("reward-select").value) : null,
           tip_amount: tip_amount,
+          delivery_fee: isDelivery(currentSelectedOrder) ? currentFee() : null,
           
         };
         const currentOrderCopy = { ...currentSelectedOrder };
+        const nuevoNombre = document.getElementById("customer-name");
+        if (phone && nuevoNombre && nuevoNombre.value.trim()) {
+          // Registrar el nombre del cliente nuevo antes de sumar su compra
+          const ident = phone.replace(/\D/g, "");
+          await fetch("/api/loyalty/customers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+            body: JSON.stringify(ident.length === 10 && ident.startsWith("3") ? { phone: ident, name: nuevoNombre.value.trim() } : { cedula: ident, name: nuevoNombre.value.trim() }),
+          });
+        }
 
         try {
           const isOffline = !navigator.onLine;
@@ -1360,9 +1334,25 @@
           }
 
           if (res.ok) {
-            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
+            if (data.loyalty && data.loyalty.redeemed) {
+              toast(`⭐ Premio entregado: ${data.loyalty.redeemed} (gratis). Al cliente le quedan ${data.loyalty.points} compras.`);
+            } else if (data.loyalty) {
+              toast(`⭐ Compra registrada al cliente: lleva ${data.loyalty.points} de 10.`, "info");
+            }
             document.getElementById("tip-amount").value = "0";
             document.getElementById("loyalty-info").innerText = "";
+            toast(
+              (method === "donacion" ? `Donación registrada: ${currentOrderCopy.items.length} producto(s), sin cobro` :
+              (() => {
+                const total = (currentOrderCopy.total_cop || 0) + (payload.delivery_fee || 0);
+                const conBono = Math.min(total, currentOrderCopy.voucher_amount_cop || 0);
+                const nombre = currentOrderCopy.table_name || "Orden #" + currentOrderCopy.id;
+                if (method === "bono") return `Cobro registrado: ${nombre} · ${copF(total)} pagado con bono`;
+                return `Cobro registrado: ${nombre} · ${copF(total - conBono)} en ${method}` + (conBono ? ` + ${copF(conBono)} con bono` : "");
+              })()) +
+                (payload.delivery_fee ? ` (incluye domicilio $${payload.delivery_fee.toLocaleString("es-CO")})` : "") +
+                (tip_amount ? ` + propina $${tip_amount.toLocaleString("es-CO")}` : ""),
+            );
 
             // Imprimir con Web Serial
             printWebSerial(currentOrderCopy, method, tip_amount);
@@ -1371,9 +1361,10 @@
             document.getElementById("no-selection").style.display = "block";
             document.getElementById("customer-phone").value = "";
             currentSelectedOrder = null;
+            pushCFD(null); // la pantalla del cliente vuelve a "Esperando orden"
             loadData();
           } else {
-            alert("Error al procesar pago: " + data.detail);
+            toast("No se pudo cobrar: " + (typeof data.detail === "string" ? data.detail : "revisa los datos"), "error");
           }
         } catch (e) {
           alert("Error de conexión");
@@ -1405,18 +1396,50 @@
         });
         const data = await res.json();
         if (res.ok) {
-            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
-          alert(
-            "Arqueo realizado. Efectivo Esperado: $" +
-              data.expected_cash +
-              " | Diferencia: $" +
-              data.difference,
-          );
-          document.getElementById("shift-close-modal").style.display = "none";
+          showShiftSummary(data, actualCash);
           printZReport({ ...data, actual_cash: actualCash });
         } else {
-          alert("Error en arqueo: " + data.detail);
+          toast("No se pudo hacer el arqueo: " + (typeof data.detail === "string" ? data.detail : "revisa el monto"), "error");
         }
+      }
+
+      // Resumen claro del arqueo dentro del mismo modal
+      function showShiftSummary(d, actualCash) {
+        const cop = (n) => "$" + Math.round(n || 0).toLocaleString("es-CO");
+        const diff = d.difference || 0;
+        let estado, color;
+        if (Math.abs(diff) <= 1) {
+          estado = "✅ Caja cuadrada";
+          color = "#059669";
+        } else if (diff < 0) {
+          estado = "⚠️ Faltante de " + cop(-diff);
+          color = "#dc2626";
+        } else {
+          estado = "⚠️ Sobrante de " + cop(diff);
+          color = "#d97706";
+        }
+        const fila = (label, val, extra = "") =>
+          `<tr><td>${label}</td><td class="text-end ${extra}">${val}</td></tr>`;
+        const modal = document.getElementById("shift-close-modal");
+        modal.querySelector(".modal-body").innerHTML = `
+          <div class="text-center mb-3" style="font-size:22px;font-weight:800;color:${color}">${estado}</div>
+          <table class="table table-sm mb-2">
+            ${fila("Base inicial", cop(d.base_cash))}
+            ${fila("+ Ventas en efectivo", cop(d.total_cash_sales))}
+            ${fila("+ Propinas cobradas en efectivo", cop(d.cash_tips))}
+            ${fila("+ Domicilios cobrados en efectivo", cop(d.cash_delivery_fees))}
+            ${fila("− Propinas pagadas al personal", cop(d.total_tips))}
+            ${fila("− Domicilios pagados a domiciliarios", cop(d.total_delivery_fees))}
+            ${fila("− Gastos / salidas", cop(d.total_expenses))}
+            ${fila("<b>Efectivo esperado</b>", "<b>" + cop(d.expected_cash) + "</b>")}
+            ${fila("<b>Efectivo contado</b>", "<b>" + cop(actualCash) + "</b>")}
+          </table>
+          <p class="text-muted small mb-0">Propinas del turno para repartir: <b>${cop(d.total_tips)}</b>.
+          Domicilios para entregar a domiciliarios: <b>${cop(d.total_delivery_fees)}</b>.
+          El administrador verá este resultado en Contabilidad.</p>`;
+        modal.querySelector(".modal-title").textContent = "Turno cerrado";
+        modal.querySelector(".modal-footer").innerHTML =
+          '<button type="button" class="btn btn-primary w-100" onclick="location.reload()">Listo</button>';
       }
 
       // ==========================================
@@ -1442,13 +1465,13 @@
       }
 
       async function printWebSerial(order, method, tip_amount) {
-        if (!printerPort) {
+        if (!thermalPrinterPort) {
           console.warn("Impresora no conectada.");
           return;
         }
 
         try {
-          const writer = printerPort.writable.getWriter();
+          const writer = thermalPrinterPort.writable.getWriter();
           const ESC = "\x1B";
           const GS = "\x1D";
 
@@ -1520,8 +1543,6 @@
                 data += l + "\n";
               }
             });
-            data += "\n(QR de DIAN Simulado)\n";
-            data += "??? █▓▒░ ???\n"; // Arte ASCII fake
           }
 
           data += ALIGN_CENTER + divider;
@@ -1621,7 +1642,6 @@
           });
           const result = await res.json();
           if (res.ok) {
-            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
             alert(
               `Factura FEV generada (${result.invoice_number}) - CUFE: ${result.cufe}\n¡Ahora puedes proceder a cobrar la orden!`,
             );
@@ -1660,9 +1680,9 @@
                     <tr>
                         <td>${r.res_date}</td>
                         <td>${r.res_time}</td>
-                        <td class="fw-bold">${r.name}</td>
-                        <td>${r.phone || "-"}</td>
-                        <td><span class="badge bg-primary rounded-pill">${r.guests}</span></td>
+                        <td class="fw-bold">${escH(r.name)}</td>
+                        <td>${escH(r.phone || "-")}</td>
+                        <td><span class="badge bg-primary rounded-pill">${escH(r.guests)}</span></td>
                         <td>${statusBadge}</td>
                         <td>
                             ${r.status === "pending" ? `<button class="btn btn-sm btn-success" onclick="updateReservation(${r.id}, 'arrived')">Llegó</button>` : ""}
@@ -1705,27 +1725,26 @@
         }
 
         try {
-          const res = await fetch("/api/vouchers/gift_card", {
+          const res = await fetch("/api/vouchers/sell", {
             method: "POST",
             headers: AUTH(),
             body: JSON.stringify({
               value_cop: val,
-              type: "CUSTOMER",
+              payment_method: document.getElementById("bono-method").value,
               description: "Vendido en caja",
             }),
           });
 
           if (res.ok) {
-            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
             const data = await res.json();
             alert(
-              `¡Bono Generado Exitosamente!\n\nCÓDIGO: ${data.code}\nVALOR: $${data.value.toLocaleString("es-CO")}\n\nPor favor, entrégale este código al cliente.`,
+              `¡Bono vendido!\n\nCÓDIGO: ${data.code}\nVALOR: $${data.value.toLocaleString("es-CO")}\nPagado con: ${data.payment_method}\n\nEntrégale este código al cliente.`,
             );
             document.getElementById("vender-bono-modal").style.display = "none";
             document.getElementById("bono-value").value = "50000"; // Reset
           } else {
             const error = await res.json();
-            alert("Error al generar bono: " + (error.detail || ""));
+            toast("No se pudo vender el bono: " + (typeof error.detail === "string" ? error.detail : "revisa el valor"), "error");
           }
         } catch (e) {
           alert("Error de conexión al emitir bono.");
@@ -1736,10 +1755,11 @@
         const name = document.getElementById("del-name").value.trim();
         const phone = document.getElementById("del-phone").value.trim();
         const address = document.getElementById("del-address").value.trim();
-        if (!name || !address) {
-          alert("Nombre y dirección son obligatorios");
+        if (!name || !address || !phone) {
+          toast("Nombre, teléfono y dirección son obligatorios para el envío", "error");
           return;
         }
+        const zoneSel = document.getElementById("del-zone");
 
         try {
           const token = localStorage.getItem("token");
@@ -1753,16 +1773,17 @@
               customer_name: name,
               customer_phone: phone,
               delivery_address: address,
+              delivery_fee: parseFloat(document.getElementById("del-fee").value) || 0,
+              delivery_zone: zoneSel.value || null,
             }),
           });
           if (res.ok) {
-            if (data.voucher_code) { alert("🎉 ¡RECOMPENSA CANJEADA!\nEntregue este código de cupón al cliente para su próxima compra:\n\nCUPÓN: " + data.voucher_code); }
             const data = await res.json();
             document.getElementById("delivery-modal").style.display = "none";
             document.getElementById("del-name").value = "";
             document.getElementById("del-phone").value = "";
             document.getElementById("del-address").value = "";
-            await loadOpenOrders();
+            await loadData();
           } else {
             alert("Error al crear domicilio");
           }
@@ -1936,8 +1957,17 @@
                 type="text"
                 class="form-control"
                 id="del-address"
-                placeholder="Ej: Calle 123 #45-67"
+                placeholder="Ej: Calle 123 #45-67, apto 201, barrio Centro"
               />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Zona / recorrido</label>
+              <select class="form-select" id="del-zone"
+                onchange="document.getElementById('del-fee').value = this.options[this.selectedIndex].dataset.fee || 0"></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Valor del domicilio (para el domiciliario)</label>
+              <input type="number" min="0" step="500" class="form-control" id="del-fee" value="0" />
             </div>
           </div>
           <div class="modal-footer">
@@ -1962,6 +1992,6 @@
       </div>
     </div>
 
-    <script src="/core.js"></script>
+    <script src="core.js"></script>
   </body>
 </html>

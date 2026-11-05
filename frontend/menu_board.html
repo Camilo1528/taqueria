@@ -14,7 +14,7 @@
         height: 100%;
         background-color: #000;
         overflow: hidden; /* Prevent scrolling on TV */
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+
       }
 
       #ad-container {
@@ -30,14 +30,17 @@
       /* Overlay text for price */
       .price-overlay {
         position: absolute;
-        bottom: 10%;
-        left: 5%;
-        background: rgba(0, 0, 0, 0.7);
+        bottom: 7%;
+        left: 4%;
+        max-width: 60%;
+        background: rgba(11, 16, 32, 0.72);
+        backdrop-filter: blur(6px);
         color: #fff;
-        padding: 20px 40px;
-        border-radius: 20px;
-        font-size: 5rem;
+        padding: 22px 34px;
+        border-radius: 22px;
+        font-size: clamp(1.6rem, 3.4vw, 3.4rem);
         font-weight: 900;
+        line-height: 1.1;
         text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
         border-left: 10px solid #f59e0b;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -47,9 +50,6 @@
       /* Distinct styling for Promos */
       .price-overlay.promo {
         border-left: 10px solid #ef4444;
-        color: #fef08a;
-        font-size: 6rem;
-        transform: scale(1.05);
       }
 
       @keyframes slideIn {
@@ -110,9 +110,10 @@
         height: 100%;
       }
     </style>
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
+      <link rel="stylesheet" href="css/theme.css" />
   </head>
-  <body>
+  <body class="tp-dark">
     <div id="loading">Cargando Cartelera...</div>
 
     <div id="ad-container" style="display: none">
@@ -130,7 +131,7 @@
 
       async function fetchAds() {
         try {
-          const res = await fetch("/api/ads");
+          const res = await fetch("/api/ads?screen=tv");
           const data = await res.json();
           if (data.length > 0) {
             ads = data;
@@ -159,8 +160,11 @@
 
         // Set text
         const overlay = document.getElementById("price-overlay");
-        if (ad.price_text) {
-          overlay.innerText = ad.price_text;
+        if (ad.title || ad.price_text) {
+          const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+          overlay.innerHTML =
+            (ad.title ? `<div style="font-size:.55em;font-weight:700;opacity:.9;margin-bottom:6px">${esc(ad.title)}</div>` : "") +
+            (ad.price_text ? `<div style="color:#fde047">${esc(ad.price_text)}</div>` : "");
           overlay.style.display = "block";
         } else {
           overlay.style.display = "none";
@@ -201,6 +205,6 @@
       setInterval(fetchAds, 60000); // Check every minute
       fetchAds();
     </script>
-    <script src="/core.js"></script>
+    <script src="core.js"></script>
   </body>
 </html>

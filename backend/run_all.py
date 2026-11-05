@@ -1,6 +1,4 @@
 import uvicorn
-import os
-import sys
 
 def run_api():
     import api

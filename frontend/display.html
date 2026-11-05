@@ -7,21 +7,20 @@
     <link href="libs/bootstrap.min.css" rel="stylesheet" />
     <style>
       body {
-        background-color: #111827;
         color: white;
-        font-family: "Segoe UI", sans-serif;
         overflow: hidden;
         height: 100vh;
       }
       .ticket-panel {
-        background: #1f2937;
-        border-right: 2px solid #374151;
+        background: rgba(15, 23, 42, 0.85);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
         height: 100vh;
         display: flex;
         flex-direction: column;
       }
       .ad-panel {
-        background-color: #000;
+        background: radial-gradient(700px 400px at 70% 30%, rgba(99, 102, 241, 0.35), transparent 60%),
+          radial-gradient(600px 400px at 20% 80%, rgba(16, 185, 129, 0.25), transparent 60%), #0b1020;
         height: 100vh;
         overflow: hidden;
         position: relative;
@@ -30,37 +29,59 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        opacity: 0.8;
+        animation: adIn 0.8s ease;
+      }
+      @keyframes adIn {
+        from { opacity: 0; transform: scale(1.03); }
+        to { opacity: 1; transform: none; }
+      }
+      .ad-text {
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+        padding-top: 80px;
+        padding-bottom: 30px;
+      }
+      .ad-sub {
+        color: #fbbf24;
+        font-weight: 700;
+      }
+      .ad-sub.promo {
+        display: inline-block;
+        background: #ef4444;
+        color: #fff;
+        padding: 8px 22px;
+        border-radius: 999px;
       }
       .ad-text {
         position: absolute;
-        bottom: 10%;
+        bottom: 0;
         width: 100%;
         text-align: center;
         text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
       }
       .item-row {
-        border-bottom: 1px solid #374151;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         padding: 15px 0;
       }
       .total-box {
-        background: #10b981;
+        background: linear-gradient(135deg, #10b981, #059669);
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.35);
         padding: 20px;
-        border-radius: 10px;
+        border-radius: 18px;
         text-align: center;
         margin-top: auto;
         margin-bottom: 20px;
       }
     </style>
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
+      <link rel="stylesheet" href="css/theme.css" />
   </head>
-  <body>
+  <body class="tp-dark">
     <div class="row g-0 h-100">
       <!-- Panel Izquierdo: Ticket -->
       <div class="col-4 ticket-panel p-4">
         <h2 class="fw-bold mb-1 text-center" id="brand-name">Cargando...</h2>
-        <h5 class="text-center text-muted mb-4">
-          Mesa <span id="cfd-table">--</span>
+        <h5 class="text-center mb-4" style="color: #a5b4fc; font-weight: 700">
+          <span id="cfd-table">Bienvenido</span>
         </h5>
 
         <div id="cfd-items" class="flex-grow-1 overflow-auto pe-2">
@@ -75,25 +96,18 @@
 
       <!-- Panel Derecho: Publicidad / Imágenes Atractivas -->
       <div class="col-8 ad-panel">
-        <img
-          id="ad-img"
-          src="https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1080&q=80"
-          class="ad-image"
-          alt="Tacos"
-        />
+        <img id="ad-img" class="ad-image" alt="Publicidad" style="display: none" />
         <div class="ad-text px-5">
-          <h1 class="display-3 fw-bold text-white">
-            ¡Pruébalos con Guacamole Extra!
-          </h1>
-          <h3 class="text-warning">Pregunta por nuestras promociones</h3>
+          <h1 class="display-4 fw-bold text-white" id="ad-title">¡Gracias por tu visita!</h1>
+          <h3 class="ad-sub" id="ad-sub">Pregunta por nuestras promociones</h3>
         </div>
       </div>
     </div>
 
     <script>
-      const API_KEY = "123456";
+      // Se abre en el mismo computador de la caja: usa la sesión del cajero
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws/cfd?api_key=${API_KEY}`;
+      const wsUrl = `${protocol}//${window.location.host}/ws/cfd?token=${encodeURIComponent(localStorage.getItem("token") || "")}`;
 
       let ws = new WebSocket(wsUrl);
 
@@ -104,7 +118,7 @@
           document.getElementById("cfd-items").innerHTML =
             `<h4 class="text-center text-secondary mt-5">Esperando orden...</h4>`;
           document.getElementById("cfd-total").innerText = "$0";
-          document.getElementById("cfd-table").innerText = "--";
+          document.getElementById("cfd-table").innerText = "Bienvenido";
           return;
         }
 
@@ -112,13 +126,14 @@
         document.getElementById("cfd-total").innerText =
           "$" + data.total.toLocaleString("es-CO");
 
+        const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
         let itemsHtml = "";
         data.items.forEach((item) => {
           itemsHtml += `
                 <div class="item-row d-flex justify-content-between align-items-center">
                     <div class="fs-4">
                         <span class="text-success fw-bold me-2">${item.qty}x</span> 
-                        ${item.product_name}
+                        ${esc(item.product_name)}
                     </div>
                     <div class="fs-4 fw-bold">
                         $${item.total_cop.toLocaleString("es-CO")}
@@ -136,11 +151,7 @@
         }, 3000);
 
       // Cargar Marca Blanca y Publicidad
-      let adImages = [
-        "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1080&q=80",
-        "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=1080&q=80",
-        "https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?auto=format&fit=crop&w=1080&q=80",
-      ];
+      let ads = [];
 
       fetch("/branding")
         .then((res) => res.json())
@@ -154,22 +165,42 @@
             data.theme_color || "#10b981",
           );
 
-          if (data.ad_images && data.ad_images.length > 0) {
-            adImages = data.ad_images;
-            document.getElementById("ad-img").src = adImages[0];
-          }
-        });
+        })
+        .catch(() => {});
 
-      // Rotación de Imágenes para antojarlos
+      // Publicidad: la que el administrador marcó para "Caja" o "Ambas"
       let idx = 0;
-      setInterval(() => {
-        if (adImages.length > 0) {
-          idx = (idx + 1) % adImages.length;
-          document.getElementById("ad-img").src = adImages[idx];
+      let adTimer = null;
+      function showAd() {
+        const img = document.getElementById("ad-img");
+        const title = document.getElementById("ad-title");
+        const sub = document.getElementById("ad-sub");
+        if (!ads.length) {
+          img.style.display = "none";
+          title.innerText = "¡Gracias por tu visita!";
+          sub.innerText = "Pregunta por nuestras promociones";
+          return;
         }
-      }, 10000);
+        const ad = ads[idx % ads.length];
+        img.style.display = "block";
+        img.src = ad.image_url;
+        title.innerText = ad.title || "";
+        sub.innerText = ad.price_text || "";
+        sub.classList.toggle("promo", !!ad.is_promo);
+        idx++;
+        clearTimeout(adTimer);
+        adTimer = setTimeout(showAd, (ad.duration || 8) * 1000);
+      }
+      async function loadAds() {
+        try {
+          ads = await (await fetch("/api/ads?screen=caja")).json();
+        } catch (e) {}
+        if (!adTimer) showAd();
+      }
+      loadAds();
+      setInterval(loadAds, 60000);
     </script>
 
-    <script src="/core.js"></script>
+    <script src="core.js"></script>
   </body>
 </html>
