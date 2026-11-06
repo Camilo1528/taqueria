@@ -3517,7 +3517,9 @@
                 item.id +
                 ')"><i class="bi bi-plus-lg"></i> Stock</button> <button class="btn btn-sm btn-outline" title="Editar mínimo y máximo" onclick="editLimits(' +
                 item.id +
-                ')"><i class="bi bi-sliders"></i></button></td></tr>'
+                ')"><i class="bi bi-sliders"></i></button> <button class="btn btn-sm btn-outline" style="color:#ef4444" title="Eliminar ítem" onclick="deleteInvItem(' +
+                item.id +
+                ')"><i class="bi bi-trash3"></i></button></td></tr>'
               );
             })
             .join("");
@@ -3596,6 +3598,21 @@
           toast("Límites actualizados");
           loadInventario();
         } else toast(await errMsg(r, "Error al actualizar límites"), "error");
+      }
+
+      async function deleteInvItem(id) {
+        const item = invData.find((i) => i.id === id);
+        if (!item) return;
+        if (!confirm("¿Eliminar \"" + item.name + "\" del inventario? El historial se conserva.")) return;
+        try {
+          const r = await fetch("/api/inventory/" + id, { method: "DELETE", headers: AUTH() });
+          if (r.ok) {
+            toast("Ítem eliminado");
+            loadInventario();
+          } else toast(await errMsg(r, "Error al eliminar"), "error");
+        } catch (e) {
+          toast("Error de conexión", "error");
+        }
       }
 
       async function crearNuevoItem() {

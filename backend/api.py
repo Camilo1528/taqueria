@@ -560,7 +560,7 @@ def business_insights(summary: dict) -> list:
 
     # 5. Inventario por debajo del mínimo
     bajos = db.all("SELECT name, stock_current, stock_min, COALESCE(stock_max,0) stock_max FROM inventory_items "
-                   "WHERE stock_current <= stock_min ORDER BY (stock_current - stock_min) ASC")
+                   "WHERE stock_current <= stock_min AND COALESCE(active,1)=1 ORDER BY (stock_current - stock_min) ASC")
     if bajos:
         lista = ", ".join(f"{b['name']} (pedir {max(0, (b['stock_max'] or b['stock_min'] * 2) - b['stock_current']):g})" for b in bajos[:3])
         extra = f" y {len(bajos) - 3} más" if len(bajos) > 3 else ""
@@ -840,7 +840,7 @@ class InventoryLimitsSchema(BaseModel):
 @app.get("/api/inventory")
 def get_inventory(current_user: dict = Depends(get_current_user)):
     try:
-        items = db.all("SELECT * FROM inventory_items")
+        items = db.all("SELECT * FROM inventory_items WHERE COALESCE(active,1)=1")
         return [dict(i) for i in items]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -885,6 +885,18 @@ def _require_inventory_item(item_id: int):
     if not row:
         raise HTTPException(status_code=404, detail="Ítem de inventario no encontrado")
     return row
+
+@app.delete("/api/inventory/{item_id}")
+def delete_inventory_item(item_id: int, current_user: dict = Depends(require_manager)):
+    """Oculta el ítem (no lo borra) para no romper el historial de stock y mermas."""
+    row = _require_inventory_item(item_id)
+    usos = db.all("SELECT p.name FROM recipe_items r JOIN products p ON p.id = r.product_id WHERE r.inventory_item_id=?", (item_id,))
+    if usos:
+        nombres = ", ".join(u["name"] for u in usos[:5])
+        raise HTTPException(status_code=409, detail=f"No se puede eliminar: lo usan las recetas de {nombres}. Quítalo de esas recetas primero.")
+    db.execute("UPDATE inventory_items SET active=0 WHERE id=?", (item_id,))
+    db.log(current_user.get('sub'), "DELETE_INVENTORY_ITEM", f"Eliminado: {row['name']} (id {item_id})")
+    return {"status": "ok"}
 
 @app.post("/api/inventory/{item_id}/waste")
 def register_waste(item_id: int, data: WasteSchema, current_user: dict = Depends(require_manager)):

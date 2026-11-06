@@ -94,7 +94,7 @@ class DB:
         expenses = self.all("SELECT SUM(amount) as t FROM expenses WHERE substr(date,1,10)=?", (today,))
         total_expenses = expenses[0]['t'] or 0.0
 
-        return {'total': total, 'orders': len(rows), 'by_payment': by_payment, 'items': items, 'low_stock': self.all('SELECT * FROM inventory_items WHERE stock_current <= stock_min'), 'attendance': [dict(a) for a in att], 'total_expenses': total_expenses}
+        return {'total': total, 'orders': len(rows), 'by_payment': by_payment, 'items': items, 'low_stock': self.all('SELECT * FROM inventory_items WHERE stock_current <= stock_min AND COALESCE(active,1)=1'), 'attendance': [dict(a) for a in att], 'total_expenses': total_expenses}
 
     def authenticate_user(self, username: str, password: str, verify_fn) -> tuple[bool, str, sqlite3.Row | None]:
         user = self.one('SELECT * FROM users WHERE username=? AND active=1', (username,))
@@ -120,7 +120,7 @@ class DB:
                        ('customer_phone', 'TEXT'), ('delivery_address', 'TEXT'), ('notes', 'TEXT')],
             'users': [('birth_date', 'TEXT')],
             'vouchers': [('balance_cop', 'REAL DEFAULT 0')],
-            'inventory_items': [('stock_max', 'REAL DEFAULT 0'), ('unit', "TEXT DEFAULT 'und'")],
+            'inventory_items': [('stock_max', 'REAL DEFAULT 0'), ('unit', "TEXT DEFAULT 'und'"), ('active', 'INTEGER DEFAULT 1')],
         }
         with self.connect() as con:
             con.execute('CREATE TABLE IF NOT EXISTS loyalty_customers (cedula TEXT PRIMARY KEY, name TEXT, points INTEGER DEFAULT 0)')
