@@ -155,6 +155,108 @@ def monthly_report(month: str) -> dict:
     }
 
 
+METODOS = {"efectivo": "Efectivo", "tarjeta": "Tarjeta", "transferencia": "Transferencia", "nequi": "Nequi",
+           "daviplata": "Daviplata", "puntos": "Puntos", "bono": "Bono / tarjeta de regalo", "donacion": "Donación",
+           "mixto": "Mixto", "online": "Pago en línea", "sin_definir": "Sin definir"}
+
+
+def monthly_excel(month: str) -> bytes:
+    """Libro de Excel del mes: resumen, días, métodos de pago, turnos, egresos, domicilios y anulaciones."""
+    from app.xlsx import Workbook
+    m = monthly_report(month)  # valida el formato del mes
+    y, mo = (int(x) for x in month.split("-"))
+    last = calendar.monthrange(y, mo)[1]
+    dias = [daily_report(f"{y:04d}-{mo:02d}-{d:02d}") for d in range(1, last + 1)]
+    dias = [d for d in dias if d["orders"] or d["shifts"] or d["total_expenses"]]
+    wb = Workbook()
+
+    # 1. Resumen
+    h = wb.add("Resumen")
+    h.title(f"Contabilidad {month}")
+    h.blank()
+    h.header("Concepto", "Valor")
+    h.row("Ventas del mes", m["total_sales"])
+    h.row("Propinas del mes", m["total_tips"])
+    h.row("Egresos", m["total_expenses"])
+    h.row("Pago a domiciliarios", sum(d["total_delivery_fees"] for d in dias))
+    h.row("Órdenes cobradas", sum(d["orders"] for d in dias))
+    h.row("Descuadre acumulado", m["difference"])
+    h.row("Días con descuadre", len(m["days_with_difference"]))
+    h.row("Días sin validar", len(m["pending_days"]))
+    if m["closed"]:
+        h.row("Estado del mes", f"Cerrado por {m['closed']['validated_by']} el {m['closed']['validated_at']}")
+        if m["closed"].get("notes"):
+            h.row("Observaciones del cierre", m["closed"]["notes"])
+    else:
+        h.row("Estado del mes", "Abierto (sin cierre)")
+
+    # 2. Días
+    s = wb.add("Días")
+    s.header("Fecha", "Órdenes", "Ventas", "Propinas", "Egresos", "Domicilios", "Descuadre",
+             "Validado", "Validado por", "Fecha validación", "Observaciones", "Alertas")
+    for d in dias:
+        v = d["validated"] or {}
+        s.row(d["date"], d["orders"], d["total_sales"], d["total_tips"], d["total_expenses"],
+              d["total_delivery_fees"], d["difference"], bool(v), v.get("validated_by"), v.get("validated_at"),
+              v.get("notes"), " | ".join(d["alerts"]))
+
+    # 3. Ventas por método de pago (una columna por método)
+    metodos = sorted({k for d in dias for k in d["sales_by_method"]})
+    s = wb.add("Métodos de pago")
+    s.header("Fecha", *[METODOS.get(k, k) for k in metodos], "Total")
+    for d in dias:
+        s.row(d["date"], *[d["sales_by_method"].get(k, 0) for k in metodos], d["total_sales"])
+    if dias:
+        s.row("TOTAL", *[sum(d["sales_by_method"].get(k, 0) for d in dias) for k in metodos],
+              sum(d["total_sales"] for d in dias))
+
+    # 4. Turnos de caja
+    s = wb.add("Turnos de caja")
+    s.header("Turno", "Cajero", "Apertura", "Cierre", "Base", "Esperado", "Contado", "Diferencia", "Resultado")
+    for d in dias:
+        for t in d["shifts"]:
+            if t["status"] == "open":
+                res = "Abierto"
+            elif abs(t["difference"] or 0) <= TOLERANCIA_COP:
+                res = "Cuadrado"
+            else:
+                res = "Sobrante" if t["difference"] > 0 else "Faltante"
+            s.row(t["id"], t["cashier"], t["opened_at"], t["closed_at"], t["base_cash"],
+                  t["expected_cash"], t["actual_cash"], t["difference"], res)
+
+    # 5. Egresos
+    s = wb.add("Egresos")
+    s.header("Fecha", "Descripción", "Valor", "Registró", "Turno")
+    total = 0
+    for e in db.all("SELECT e.*, u.username cashier FROM expenses e LEFT JOIN users u ON u.id=e.cashier_id "
+                    "WHERE substr(e.date,1,7)=? ORDER BY e.date", (month,)):
+        s.row(e["date"], e["description"], e["amount"], e["cashier"], e["shift_id"])
+        total += e["amount"] or 0
+    s.row("TOTAL", None, total)
+
+    # 6. Domicilios
+    s = wb.add("Domicilios")
+    s.header("Fecha", "Domiciliario", "Entregas", "Valor a pagar")
+    for d in dias:
+        for x in d["delivery_by_driver"]:
+            s.row(d["date"], x["driver"], x["deliveries"], x["fees"])
+
+    # 7. Anulaciones (cuentas anuladas y productos quitados), con motivo y quién autorizó
+    s = wb.add("Anulaciones")
+    s.header("Fecha", "Tipo", "Cuenta", "Valor", "Hecho por", "Detalle (motivo y autorización)")
+    for o in db.all("SELECT * FROM orders WHERE status='cancelled' AND substr(COALESCE(closed_at, created_at),1,7)=? "
+                    "ORDER BY closed_at", (month,)):
+        log = db.one("SELECT username, details FROM audit_log WHERE action='VOID_ORDER' AND details LIKE ? "
+                     "ORDER BY id DESC LIMIT 1", (f"%(#{o['id']})%",))
+        s.row(o["closed_at"], "Cuenta anulada", o["table_name"] or f"Orden #{o['id']}", o["total_cop"],
+              log["username"] if log else None, log["details"] if log else None)
+    for a in db.all("SELECT * FROM audit_log WHERE action='REMOVE_ORDER_ITEM' AND substr(created_at,1,7)=? "
+                    "ORDER BY id", (month,)):
+        s.row(a["created_at"], "Producto quitado", None, None, a["username"], a["details"])
+
+    return wb.to_bytes()
+
+
 class OpenShift(BaseModel):
     base_cash: float
 
@@ -271,5 +373,14 @@ def build_router(get_current_user, require_manager) -> APIRouter:
                     data.notes, user.get("sub"), _now()))
         db.log(user.get("sub"), "month_closed", month)
         return monthly_report(month)
+
+    @router.get("/api/accounting/monthly/{month}/excel")
+    def export_month_excel(month: str, user: dict = Depends(require_manager)):
+        from fastapi.responses import Response
+        data = monthly_excel(month)
+        db.log(user.get("sub"), "accounting_export", month)
+        return Response(content=data,
+                        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition": f'attachment; filename="contabilidad_{month}.xlsx"'})
 
     return router

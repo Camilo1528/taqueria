@@ -1001,6 +1001,11 @@
                 <label class="form-label">Mes</label
                 ><input type="month" class="form-control" id="acc-month" onchange="loadAccMonth()" />
               </div>
+              <div class="form-group" style="align-self: flex-end">
+                <button class="btn btn-success" onclick="downloadAccExcel()" id="btn-acc-excel">
+                  <i class="bi bi-file-earmark-excel-fill"></i> Descargar Excel
+                </button>
+              </div>
             </div>
             <div id="acc-month-body">Cargando...</div>
           </div>
@@ -2659,6 +2664,29 @@
           <div style="margin-bottom:12px">${metodos}</div>
           ${tabla}
           ${validado}`;
+      }
+
+      async function downloadAccExcel() {
+        const month = document.getElementById("acc-month").value;
+        if (!month) return toast("Elige un mes", "error");
+        const btn = document.getElementById("btn-acc-excel");
+        btn.disabled = true;
+        try {
+          const r = await fetch(`/api/accounting/monthly/${month}/excel`, { headers: AUTH() });
+          if (!r.ok) return toast(await errMsg(r, "No se pudo generar el Excel"), "error");
+          const url = URL.createObjectURL(await r.blob());
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `contabilidad_${month}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (e) {
+          toast("Error de conexión", "error");
+        } finally {
+          btn.disabled = false;
+        }
       }
 
       async function validateAccDay() {
