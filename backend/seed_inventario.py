@@ -49,12 +49,12 @@ def main(clean_others: bool = True) -> None:
     for name, mn, mx in ITEMS:
         row = db.one("SELECT id FROM inventory_items WHERE lower(name)=lower(?)", (name,))
         if row:
-            db.execute("UPDATE inventory_items SET name=?, stock_min=?, stock_max=?, unit='und' WHERE id=?", (name, mn, mx, row["id"]))
+            db.execute("UPDATE inventory_items SET name=?, stock_min=?, stock_max=?, unit='und', active=1 WHERE id=?", (name, mn, mx, row["id"]))
             actualizados += 1
         else:
             db.execute(
-                "INSERT INTO inventory_items (name, stock_current, stock_min, stock_max, unit, inventory_type) "
-                "VALUES (?, 0, ?, ?, 'und', 'ingrediente')",
+                "INSERT INTO inventory_items (name, stock_current, stock_min, stock_max, unit, inventory_type, active) "
+                "VALUES (?, 0, ?, ?, 'und', 'ingrediente', 1)",
                 (name, mn, mx),
             )
             creados += 1
