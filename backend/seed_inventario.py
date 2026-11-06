@@ -30,12 +30,26 @@ ITEMS = [
 ]
 
 
-def main() -> None:
+def main(clean_others: bool = True) -> None:
+    allowed_names = [name.lower() for name, _, _ in ITEMS]
+
+    if clean_others:
+        placeholders = ",".join("?" for _ in allowed_names)
+        db.execute(
+            f"DELETE FROM recipe_items WHERE inventory_item_id IN (SELECT id FROM inventory_items WHERE lower(name) NOT IN ({placeholders}))",
+            tuple(allowed_names),
+        )
+        db.execute(
+            f"DELETE FROM inventory_items WHERE lower(name) NOT IN ({placeholders})",
+            tuple(allowed_names),
+        )
+        print("Eliminados ítems antiguos de inventario que no están en la lista oficial.")
+
     creados = actualizados = 0
     for name, mn, mx in ITEMS:
         row = db.one("SELECT id FROM inventory_items WHERE lower(name)=lower(?)", (name,))
         if row:
-            db.execute("UPDATE inventory_items SET stock_min=?, stock_max=?, unit='und' WHERE id=?", (mn, mx, row["id"]))
+            db.execute("UPDATE inventory_items SET name=?, stock_min=?, stock_max=?, unit='und' WHERE id=?", (name, mn, mx, row["id"]))
             actualizados += 1
         else:
             db.execute(
