@@ -796,6 +796,64 @@ def update_item_notes(order_id: int, item_id: int, data: ItemNotesSchema, curren
     db.execute("UPDATE order_items SET notes=? WHERE id=? AND order_id=?", (data.notes, item_id, order_id))
     return {"status": "ok"}
 
+class VoidSchema(BaseModel):
+    reason: str = Field(min_length=3, max_length=200)
+    admin_pin: Optional[str] = None
+
+def _authorize_void(current_user: dict, admin_pin: Optional[str]) -> str:
+    """Anular exige ser admin; cualquier otro rol necesita el PIN de un admin. Devuelve quién autorizó."""
+    if current_user.get("role") == "admin":
+        return current_user.get("sub") or "admin"
+    if not admin_pin:
+        raise HTTPException(status_code=403, detail="Se necesita el PIN de un administrador")
+    ok, _, user = db.authenticate_pin(admin_pin)
+    if not ok or user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="PIN de administrador inválido")
+    return user["username"]
+
+def _open_order_or_400(order_id: int):
+    order = db.one("SELECT * FROM orders WHERE id=?", (order_id,))
+    if not order:
+        raise HTTPException(status_code=404, detail="La cuenta no existe")
+    if order["status"] != "open":
+        raise HTTPException(status_code=400, detail="La cuenta ya no está abierta")
+    return order
+
+@app.post("/api/pos/orders/{order_id}/void")
+async def void_order(order_id: int, data: VoidSchema, current_user: dict = Depends(get_current_user)):
+    """Anula una cuenta abierta: no se borra, queda como 'cancelled' y no suma a ventas ni arqueo.
+    El inventario no se toca porque solo se descuenta al cobrar."""
+    order = _open_order_or_400(order_id)
+    autorizo = _authorize_void(current_user, data.admin_pin)
+    with db.connect() as con:
+        con.execute("UPDATE orders SET status='cancelled', closed_at=? WHERE id=? AND status='open'",
+                    (datetime.datetime.now().isoformat(timespec='seconds'), order_id))
+        con.execute("UPDATE order_items SET status='cancelled' WHERE order_id=?", (order_id,))
+        con.execute("UPDATE tables SET is_open=0, current_order_id=NULL WHERE current_order_id=?", (order_id,))
+    nombre = order["table_name"] or f"Orden #{order_id}"
+    db.log(current_user.get('sub'), "VOID_ORDER",
+           f"Anulada {nombre} (#{order_id}) por ${order['total_cop'] or 0:,.0f}. Motivo: {data.reason}. Autorizó: {autorizo}")
+    await manager.broadcast_kitchen("update_kitchen")
+    return {"status": "ok"}
+
+@app.post("/api/pos/orders/{order_id}/items/{item_id}/remove")
+async def remove_order_item(order_id: int, item_id: int, data: VoidSchema, current_user: dict = Depends(get_current_user)):
+    """Quita un producto cargado por error y recalcula el total de la cuenta."""
+    _open_order_or_400(order_id)
+    item = db.one("SELECT * FROM order_items WHERE id=? AND order_id=?", (item_id, order_id))
+    if not item:
+        raise HTTPException(status_code=404, detail="El producto no está en esta cuenta")
+    autorizo = _authorize_void(current_user, data.admin_pin)
+    with db.connect() as con:
+        con.execute("DELETE FROM order_items WHERE id=? AND order_id=?", (item_id, order_id))
+        sub = con.execute("SELECT COALESCE(SUM(total_cop),0) s FROM order_items WHERE order_id=?", (order_id,)).fetchone()["s"]
+        con.execute("UPDATE orders SET total_cop=? WHERE id=?", (sub, order_id))
+    db.log(current_user.get('sub'), "REMOVE_ORDER_ITEM",
+           f"Quitado {item['qty']}x {item['product_name']} (${item['total_cop'] or 0:,.0f}) de la cuenta #{order_id}. "
+           f"Motivo: {data.reason}. Autorizó: {autorizo}")
+    await manager.broadcast_kitchen("update_kitchen")
+    return {"status": "ok"}
+
 ITEM_STATUSES = {"pending", "preparing", "ready", "delivered", "cancelled"}
 KITCHEN_STATUSES = {"pending", "preparing", "ready", "on_the_way", "delivered"}
 

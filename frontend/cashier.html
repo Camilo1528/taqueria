@@ -199,6 +199,9 @@
               >
                 🖨️ Imprimir Ticket
               </button>
+              <button class="btn btn-outline-danger btn-sm" onclick="voidCurrentOrder()" title="Anular esta cuenta sin cobrarla">
+                🗑️ Anular cuenta
+              </button>
             </div>
             <div id="delivery-info" class="mb-3" style="display: none"></div>
             <div style="max-height: 300px; overflow-y: auto" class="mb-3">
@@ -678,6 +681,71 @@
       let pendingAdminAction = null;
 
       // ─── MODIFICADORES ────────────────────────────────────────
+      // ===== ANULAR CUENTA / QUITAR PRODUCTO =====
+      // Si quien está en caja no es admin, el servidor responde 403 y se pide el PIN de un administrador.
+      async function postConPermiso(url, reason) {
+        const send = (admin_pin) =>
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") },
+            body: JSON.stringify({ reason, admin_pin }),
+          });
+        let r = await send(null);
+        if (r.status === 403) {
+          const pin = prompt("Esta acción la autoriza un administrador.\nPIN del administrador:");
+          if (!pin) return null;
+          r = await send(pin);
+        }
+        return r;
+      }
+
+      async function voidCurrentOrder() {
+        const o = currentSelectedOrder;
+        if (!o) return;
+        const nombre = o.table_name || "Orden #" + o.id;
+        const reason = prompt(`Anular ${nombre} por $${Math.round(o.total_cop || 0).toLocaleString("es-CO")}.\nNo se cobra y no suma a las ventas.\n\nMotivo:`);
+        if (reason === null) return;
+        if (reason.trim().length < 3) return alert("Escribe un motivo (mínimo 3 letras).");
+        try {
+          const r = await postConPermiso(`/api/pos/orders/${o.id}/void`, reason.trim());
+          if (!r) return;
+          if (r.ok) {
+            currentSelectedOrder = null;
+            document.getElementById("payment-panel").style.display = "none";
+            document.getElementById("no-selection").style.display = "block";
+            alert(`${nombre} anulada.`);
+            loadData();
+          } else {
+            const e = await r.json().catch(() => ({}));
+            alert(e.detail || "No se pudo anular la cuenta");
+          }
+        } catch (e) {
+          alert("Sin conexión: no se pudo anular la cuenta");
+        }
+      }
+
+      async function removeOrderItem(idx) {
+        const o = currentSelectedOrder;
+        const it = o && o.items[idx];
+        if (!it) return;
+        const reason = prompt(`Quitar ${it.qty}x ${it.product_name} de la cuenta.\n\nMotivo:`, "Cargado por error");
+        if (reason === null) return;
+        if (reason.trim().length < 3) return alert("Escribe un motivo (mínimo 3 letras).");
+        try {
+          const r = await postConPermiso(`/api/pos/orders/${o.id}/items/${it.id}/remove`, reason.trim());
+          if (!r) return;
+          if (r.ok) {
+            await loadData();
+            if (openOrders.find((x) => x.id === o.id)) selectOrder(o.id);
+          } else {
+            const e = await r.json().catch(() => ({}));
+            alert(e.detail || "No se pudo quitar el producto");
+          }
+        } catch (e) {
+          alert("Sin conexión: no se pudo quitar el producto");
+        }
+      }
+
       function openModifierModal(idx) {
         currentModifierItemIdx = idx;
         const item = currentSelectedOrder.items[idx];
@@ -1053,6 +1121,7 @@
                     <div class="d-flex gap-2 align-items-center">
                         <span>$${item.total_cop.toLocaleString("es-CO")}</span>
                         <button class="btn btn-sm btn-outline-secondary py-0" onclick="openModifierModal(${idx})" title="Modificadores">📝</button>
+                        <button class="btn btn-sm btn-outline-danger py-0" onclick="removeOrderItem(${idx})" title="Quitar producto">✕</button>
                     </div>
                 </div>
                 ${notesHtml}
